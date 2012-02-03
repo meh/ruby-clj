@@ -38,7 +38,7 @@ class Parser < StringScanner
 		\\[\x20-\x21\x23-\x2e\x30-\x5b\x5d-\x61\x63-\x65\x67-\x6d\x6f-\x71\x73\x75-\xff])*)
 	"/nx
 
-	KEYWORD = /:([^(\[{'^@`~\"\\,\s;)\]}])/
+	KEYWORD = /:([^(\[{'^@`~\"\\,\s;)\]}]+)/
 
 	INTEGER = /(-?0|-?[1-9]\d*)/
 

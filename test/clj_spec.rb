@@ -24,6 +24,10 @@ describe Clojure do
 			Clojure.dump("\\a\a").should    == '"\\\\a\u0003"'
 		end
 
+		it 'dumps correctly symbols' do
+			Clojure.dump(:wat).should == ':wat'
+		end
+
 		it 'dumps correctly integers' do
 			Clojure.dump(2).should    == '2'
 			Clojure.dump(1337).should == '1337'
@@ -83,6 +87,10 @@ describe Clojure do
 		it 'parses correctly strings' do
 			Clojure.parse('"lol"').should      == "lol"
 			Clojure.parse('"lol\nlol"').should == "lol\nlol"
+		end
+
+		it 'parses correctly keywords' do
+			Clojure.parse(':wat').should == :wat
 		end
 
 		it 'parses correctly integers' do
