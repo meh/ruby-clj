@@ -24,6 +24,18 @@ class Regexp
 	end
 end
 
+class Date
+	def to_clj
+		to_time.to_clj
+	end
+end
+
+class Time
+	def to_clj
+		to_i.to_s
+	end
+end
+
 if defined? BigDecimal
 	class BigDecimal
 		def to_clj
