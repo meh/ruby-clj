@@ -12,7 +12,7 @@ require 'date'
 
 [String, Symbol, Numeric, TrueClass, FalseClass, NilClass].each {|klass|
 	klass.instance_eval {
-		define_method :to_clj do |options = {}|
+		define_method :to_clj do |*|
 			inspect
 		end
 	}
