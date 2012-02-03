@@ -1,6 +1,7 @@
 #! /usr/bin/env ruby
 require 'rubygems'
 require 'clj'
+require 'bigdecimal'
 
 describe Clojure do
 	describe '#dump' do
@@ -34,6 +35,14 @@ describe Clojure do
 
 		it 'dumps correctly rationals' do
 			Clojure.dump(Rational('2/3')).should == '2/3'
+		end
+
+		it 'dumps correctly bignums' do
+			Clojure.dump(324555555555555555555555555555555555555555555555324445555555555555).should == '324555555555555555555555555555555555555555555555324445555555555555N'
+		end
+
+		it 'dumps correctly bigdecimals' do
+			Clojure.dump(BigDecimal('0.2345636456')).should == '0.2345636456M'
 		end
 
 		it 'dumps correctly regexps' do
@@ -87,6 +96,14 @@ describe Clojure do
 
 		it 'parses correctly rationals' do
 			Clojure.parse('2/3').should == Rational('2/3')
+		end
+
+		it 'parses correctly bignums' do
+			Clojure.parse('324555555555555555555555555555555555555555555555324445555555555555N').should == 324555555555555555555555555555555555555555555555324445555555555555
+		end
+
+		it 'parses correctly bigdecimals' do
+			Clojure.parse('0.2345636456M').should == BigDecimal('0.2345636456')
 		end
 
 		it 'parses correctly regexps' do

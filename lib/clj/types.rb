@@ -63,11 +63,15 @@ class Time
 	end
 end
 
-if defined? BigDecimal
-	class BigDecimal
-		def to_clj (options = {})
-			inspect + 'M'
-		end
+class Bignum < Integer
+	def to_clj (options = {})
+		to_s + 'N'
+	end
+end
+
+class BigDecimal < Numeric
+	def to_clj (options = {})
+		to_s('F') + 'M'
 	end
 end
 

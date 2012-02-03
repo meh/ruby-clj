@@ -42,6 +42,8 @@ class Parser < StringScanner
 
 	INTEGER = /(-?0|-?[1-9]\d*)/
 
+	BIGNUM = /#{INTEGER}N/
+
 	FLOAT = /(-?
 		(?:0|[1-9]\d*)
 		(?:
@@ -50,6 +52,8 @@ class Parser < StringScanner
 			(?i:e[+-]?\d+)
 		)
 	)/x
+
+	BIGDECIMAL = /#{FLOAT}M/
 
 	RATIONAL = /(#{INTEGER}\/#{INTEGER})/
 
@@ -113,17 +117,19 @@ class Parser < StringScanner
 
 	def parse_value
 		case
-			when scan(RATIONAL) then Rational(self[1])
-			when scan(FLOAT)    then Float(self[1])
-			when scan(INTEGER)  then Integer(self[1])
-			when scan(REGEXP)   then /#{self[1]}/
-			when scan(INSTANT)  then DateTime.rfc3339(self[1])
-			when scan(STRING)   then parse_string
-			when scan(KEYWORD)  then self[1].to_sym
-			when scan(TRUE)     then true
-			when scan(FALSE)    then false
-			when scan(NIL)      then nil
-			else                UNPARSED
+			when scan(RATIONAL)   then Rational(self[1])
+			when scan(BIGDECIMAL) then require 'bigdecimal'; BigDecimal(self[1])
+			when scan(FLOAT)      then Float(self[1])
+			when scan(BIGNUM)     then Integer(self[1])
+			when scan(INTEGER)    then Integer(self[1])
+			when scan(REGEXP)     then /#{self[1]}/
+			when scan(INSTANT)    then DateTime.rfc3339(self[1])
+			when scan(STRING)     then parse_string
+			when scan(KEYWORD)    then self[1].to_sym
+			when scan(TRUE)       then true
+			when scan(FALSE)      then false
+			when scan(NIL)        then nil
+			else                  UNPARSED
 		end
 	end
 
