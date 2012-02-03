@@ -19,6 +19,8 @@ describe Clojure do
 		it 'dumps correctly strings' do
 			Clojure.dump("lol").should      == '"lol"'
 			Clojure.dump("lol\nlol").should == '"lol\nlol"'
+			Clojure.dump("\\e\e").should    == '"\\\\e\u001b"'
+			Clojure.dump("\\a\a").should    == '"\\\\a\u0003"'
 		end
 
 		it 'dumps correctly integers' do

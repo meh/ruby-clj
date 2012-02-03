@@ -10,13 +10,24 @@
 
 require 'date'
 
-[String, Symbol, Numeric, TrueClass, FalseClass, NilClass].each {|klass|
+[Symbol, Numeric, TrueClass, FalseClass, NilClass].each {|klass|
 	klass.instance_eval {
 		define_method :to_clj do |*|
 			inspect
 		end
 	}
 }
+
+class String
+	def to_clj (options = {})
+		result = inspect
+		
+		result.gsub!(/(^|[^\\])\\e/, '\1\u001b')
+		result.gsub!(/(^|[^\\])\\a/, '\1\u0003')
+
+		result
+	end
+end
 
 class Rational
 	def to_clj (options = {})
