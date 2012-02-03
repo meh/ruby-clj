@@ -13,6 +13,23 @@ require 'strscan'
 class Clojure
 
 class Parser < StringScanner
+	UNPARSED = Object.new
+
+	IGNORE = %r(
+		(?:
+			//[^\n\r]*[\n\r]| # line comments
+			/\* # c-style comments
+			(?:
+				[^*/]| # normal chars
+				/[^*]| # slashes that do not start a nested comment
+				\*[^/]| # asterisks that do not end this comment
+				/(?=\*/) # single slash before this comment's end
+			)*
+			\*/ # the End of this comment
+			|[ \t\r\n,]+ # whitespaces: space, horicontal tab, lf, cr, and comma
+		)
+	)mx
+
 	STRING = /" ((?:[^\x0-\x1f"\\] |
 		# escaped special characters:
 		\\["\\\/bfnrt] |
@@ -38,6 +55,8 @@ class Parser < StringScanner
 
 	REGEXP = /#"((\\.|[^"])+)"/
 
+	INSTANT = /#inst#{IGNORE}*"(.*?)"/
+
 	VECTOR_OPEN  = /\[/
 	VECTOR_CLOSE = /\]/
 
@@ -53,23 +72,6 @@ class Parser < StringScanner
 	TRUE  = /true/
 	FALSE = /false/
 	NIL   = /nil/
-
-	IGNORE = %r(
-		(?:
-		 //[^\n\r]*[\n\r]| # line comments
-		 /\* # c-style comments
-		 (?:
-			[^*/]| # normal chars
-			/[^*]| # slashes that do not start a nested comment
-			\*[^/]| # asterisks that do not end this comment
-			/(?=\*/) # single slash before this comment's end
-		 )*
-			 \*/ # the End of this comment
-			 |[ \t\r\n,]+ # whitespaces: space, horicontal tab, lf, cr, and comma
-		)+
-	)mx
-
-	UNPARSED = Object.new
 
 	def initialize (source, options = {})
 		super(source)
@@ -115,6 +117,7 @@ class Parser < StringScanner
 			when scan(FLOAT)    then Float(self[1])
 			when scan(INTEGER)  then Integer(self[1])
 			when scan(REGEXP)   then /#{self[1]}/
+			when scan(INSTANT)  then DateTime.rfc3339(self[1])
 			when scan(STRING)   then parse_string
 			when scan(KEYWORD)  then self[1].to_sym
 			when scan(TRUE)     then true
@@ -165,7 +168,7 @@ class Parser < StringScanner
 				result << value
 			when scan(VECTOR_CLOSE)
 				break
-			when skip(IGNORE)
+			when skip(/#{IGNORE}+/)
 				;
 			else
 				raise SyntaxError, 'wat do'
@@ -184,7 +187,7 @@ class Parser < StringScanner
 				result << value
 			when scan(LIST_CLOSE)
 				break
-			when skip(IGNORE)
+			when skip(/#{IGNORE}+/)
 				;
 			else
 				raise SyntaxError, 'wat do'
@@ -203,7 +206,7 @@ class Parser < StringScanner
 				result << value
 			when scan(SET_CLOSE)
 				break
-			when skip(IGNORE)
+			when skip(/#{IGNORE}+/)
 				;
 			else
 				raise SyntaxError, 'wat do'
@@ -223,7 +226,7 @@ class Parser < StringScanner
 		until eos?
 			case
 			when (key = parse(false)) != UNPARSED
-				skip(IGNORE)
+				skip(/#{IGNORE}*/)
 
 				if (value = parse(false)) == UNPARSED
 					raise SyntaxError, 'no value for the hash'
@@ -232,7 +235,7 @@ class Parser < StringScanner
 				result[key] = value
 			when scan(HASH_CLOSE)
 				break
-			when skip(IGNORE)
+			when skip(/#{IGNORE}+/)
 				;
 			else
 				raise SyntaxError, 'wat do'

@@ -38,6 +38,11 @@ describe Clojure do
 			Clojure.dump(/(\d+)/).should == '#"(\d+)"'
 		end
 
+		it 'dumps correctly dates' do
+			Clojure.dump(DateTime.rfc3339("2012-02-03T15:20:59+01:00")).should == '1328278859'
+			Clojure.dump(DateTime.rfc3339("2012-02-03T15:20:59+01:00"), :alpha => true).should == '#inst "2012-02-03T15:20:59+01:00"'
+		end
+
 		it 'dumps correctly arrays' do
 			Clojure.dump([]).should           == '[]'
 			Clojure.dump([[]]).should         == '[[]]'
@@ -86,6 +91,10 @@ describe Clojure do
 			Clojure.parse('#"(\d+)"').should == /(\d+)/
 		end
 
+		it 'parses correctly dates' do
+			Clojure.parse('#inst "2012-02-03T15:20:59+01:00"').should == DateTime.rfc3339("2012-02-03T15:20:59+01:00")
+		end
+
 		it 'parses correctly vectors' do
 			Clojure.parse('[]').should         == []
 			Clojure.parse('[[]]').should       == [[]]
@@ -94,7 +103,7 @@ describe Clojure do
 			Clojure.parse('[1 2 3]').should == [1, 2, 3]
 		end
 		
-		it 'parses correcty lists' do
+		it 'parses correctly lists' do
 			Clojure.parse('()').should         == []
 			Clojure.parse('(())').should       == [[]]
 			Clojure.parse('(() () ())').should == [[], [], []]

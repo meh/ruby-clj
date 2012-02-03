@@ -16,9 +16,9 @@ class Clojure
 		Clojure::Parser.new(*args).parse
 	end
 
-	def self.dump (what)
+	def self.dump (what, options = {})
 		raise ArgumentError, 'cannot convert the passed value to clojure' unless what.respond_to? :to_clj
 
-		what.to_clj
+		what.to_clj(options)
 	end
 end

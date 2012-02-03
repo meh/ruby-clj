@@ -8,50 +8,66 @@
 #  0. You just DO WHAT THE FUCK YOU WANT TO.
 #++
 
+require 'date'
+
 [String, Symbol, Numeric, TrueClass, FalseClass, NilClass].each {|klass|
 	klass.instance_eval {
-		alias_method :to_clj, :inspect
+		define_method :to_clj do |options = {}|
+			inspect
+		end
 	}
 }
 
 class Rational
-	alias to_clj to_s
+	def to_clj (options = {})
+		to_s
+	end
 end
 
 class Regexp
-	def to_clj
+	def to_clj (options = {})
 		'#"' + inspect[1 .. -2] + '"'
 	end
 end
 
+class DateTime
+	def to_clj (options = {})
+		if options[:alpha]
+			'#inst "' + rfc3339 + '"'
+		else
+			to_time.to_i.to_s
+		end
+	end
+end
+
 class Date
-	def to_clj
-		to_time.to_clj
+	def to_clj (options = {})
+		to_datetime.to_clj(options)
 	end
 end
 
 class Time
-	def to_clj
-		to_i.to_s
+	def to_clj (options = {})
+		to_datetime.to_clj(options)
 	end
 end
 
 if defined? BigDecimal
 	class BigDecimal
-		def to_clj
+		def to_clj (options = {})
 			inspect + 'M'
 		end
 	end
 end
 
 class Array
-	def to_clj
-		'[' + map { |o| o.to_clj }.join(' ') + ']'
+	def to_clj (options = {})
+		'[' + map { |o| o.to_clj(options) }.join(' ') + ']'
 	end
 end
 
 class Hash
-	def to_clj
-		'{' + map { |k, v| k.to_clj + ' ' + v.to_clj }.join(' ') + '}'
+	def to_clj (options = {})
+		'{' + map { |k, v| k.to_clj(options) + ' ' + v.to_clj(options) }.join(' ') + '}'
 	end
 end
