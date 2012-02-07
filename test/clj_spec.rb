@@ -38,7 +38,9 @@ describe Clojure do
 		end
 
 		it 'dumps correctly rationals' do
-			Clojure.dump(Rational('2/3')).should == '2/3'
+			unless RUBY_VERSION.include? '1.8'
+				Clojure.dump(Rational('2/3')).should == '2/3'
+			end
 		end
 
 		it 'dumps correctly bignums' do
@@ -54,8 +56,10 @@ describe Clojure do
 		end
 
 		it 'dumps correctly dates' do
-			Clojure.dump(DateTime.rfc3339("2012-02-03T15:20:59+01:00")).should == '1328278859'
-			Clojure.dump(DateTime.rfc3339("2012-02-03T15:20:59+01:00"), :alpha => true).should == '#inst "2012-02-03T15:20:59+01:00"'
+			unless RUBY_VERSION.include? '1.8'
+				Clojure.dump(DateTime.rfc3339("2012-02-03T15:20:59+01:00")).should == '1328278859'
+				Clojure.dump(DateTime.rfc3339("2012-02-03T15:20:59+01:00"), :alpha => true).should == '#inst "2012-02-03T15:20:59+01:00"'
+			end
 		end
 
 		it 'dumps correctly arrays' do
@@ -87,7 +91,10 @@ describe Clojure do
 		it 'parses correctly strings' do
 			Clojure.parse('"lol"').should      == "lol"
 			Clojure.parse('"lol\nlol"').should == "lol\nlol"
-			Clojure.parse('"\u4343"').should   == "\u4343"
+
+			unless RUBY_VERSION.include? '1.8'
+				Clojure.parse('"\u4343"').should   == "\u4343"
+			end
 		end
 
 		it 'parses correctly keywords' do
@@ -104,7 +111,9 @@ describe Clojure do
 		end
 
 		it 'parses correctly rationals' do
-			Clojure.parse('2/3').should == Rational('2/3')
+			unless RUBY_VERSION.include? '1.8'
+				Clojure.parse('2/3').should == Rational('2/3')
+			end
 		end
 
 		it 'parses correctly bignums' do
@@ -120,7 +129,9 @@ describe Clojure do
 		end
 
 		it 'parses correctly dates' do
-			Clojure.parse('#inst "2012-02-03T15:20:59+01:00"').should == DateTime.rfc3339("2012-02-03T15:20:59+01:00")
+			unless RUBY_VERSION.include? '1.8'
+				Clojure.parse('#inst "2012-02-03T15:20:59+01:00"').should == DateTime.rfc3339("2012-02-03T15:20:59+01:00")
+			end
 		end
 
 		it 'parses correctly vectors' do
