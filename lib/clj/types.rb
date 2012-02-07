@@ -33,7 +33,7 @@ end
 class String
 	def to_clj (options = {})
 		result = if respond_to? :encode
-			encode('UTF-16be').inspect
+			encode('UTF-16').inspect
 		else
 			inspect
 		end

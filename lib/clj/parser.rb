@@ -171,7 +171,7 @@ class Parser < StringScanner
 			end
 
 			if bytes.respond_to? :force_encoding
-				bytes.force_encoding 'UTF-16be'
+				bytes.force_encoding 'UTF-16'
 				bytes.encode 'UTF-8'
 			else
 				bytes
