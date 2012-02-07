@@ -10,13 +10,25 @@
 
 require 'date'
 
-[Symbol, Numeric, TrueClass, FalseClass, NilClass].each {|klass|
+[Numeric, TrueClass, FalseClass, NilClass].each {|klass|
 	klass.instance_eval {
 		define_method :to_clj do |*|
 			inspect
 		end
 	}
 }
+
+class Symbol
+	def to_clj (options = {})
+		result = inspect
+
+		unless result =~ /:([^(\[{'^@`~\"\\,\s;)\]}]+)/
+			raise ArgumentError, "#{result} cannot be transformed into clojure"
+		end
+
+		result
+	end
+end
 
 class String
 	def to_clj (options = {})
