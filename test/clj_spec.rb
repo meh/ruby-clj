@@ -87,6 +87,7 @@ describe Clojure do
 		it 'parses correctly strings' do
 			Clojure.parse('"lol"').should      == "lol"
 			Clojure.parse('"lol\nlol"').should == "lol\nlol"
+			Clojure.parse('"\u4343"').should   == "\u4343"
 		end
 
 		it 'parses correctly keywords' do
