@@ -156,7 +156,7 @@ class Parser < StringScanner
 	def parse_string
 		return '' if self[1].empty?
 
-		self[1].gsub(%r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n) do |c|
+		self[1].gsub(%r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n) {|escape|
 			if u = UNESCAPE_MAP[$&[1]]
 				next u
 			end
@@ -164,8 +164,8 @@ class Parser < StringScanner
 			bytes = EMPTY_8BIT_STRING.dup
 
 			i = 0
-			while c[6 * i] == ?\\ && c[6 * i + 1] == ?u
-				bytes << c[6 * i + 2, 2].to_i(16) << c[6 * i + 4, 2].to_i(16)
+			while escape[6 * i] == ?\\ && escape[6 * i + 1] == ?u
+				bytes << escape[6 * i + 2, 2].to_i(16) << escape[6 * i + 4, 2].to_i(16)
 
 				i += 1
 			end
@@ -176,7 +176,7 @@ class Parser < StringScanner
 			else
 				bytes
 			end
-		end
+		}
 	end
 
 	def parse_vector

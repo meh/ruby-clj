@@ -22,7 +22,7 @@ class Symbol
 	def to_clj (options = {})
 		result = inspect
 
-		unless result =~ /:([^(\[{'^@`~\"\\,\s;)\]}]+)/
+		unless Clojure::Parser::KEYWORD === result
 			raise ArgumentError, "#{result} cannot be transformed into clojure"
 		end
 

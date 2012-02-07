@@ -8,8 +8,8 @@
 #  0. You just DO WHAT THE FUCK YOU WANT TO.
 #++
 
-require 'clj/types'
 require 'clj/parser'
+require 'clj/types'
 
 class Clojure
 	def self.parse (*args)
