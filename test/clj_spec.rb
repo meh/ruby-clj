@@ -26,6 +26,10 @@ describe Clojure do
 
 		it 'dumps correctly symbols' do
 			Clojure.dump(:wat).should == ':wat'
+
+			expect {
+				Clojure.dump(:"lol wat")
+			}.should raise_error
 		end
 
 		it 'dumps correctly integers' do
