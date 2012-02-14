@@ -83,8 +83,12 @@ private
 	end
 
 	def read_nil (ch)
-		unless @source.read(2).bytesize == 2
+		check = @source.read(2)
+
+		if check.bytesize != 2
 			raise SyntaxError, 'unexpected EOF'
+		elsif check != 'il'
+			raise SyntaxError, "expected nil, found n#{check}"
 		end
 
 		nil
@@ -92,14 +96,22 @@ private
 
 	def read_boolean (ch)
 		if ch == 't'
-			unless @source.read(3).bytesize == 3
+			check = @source.read(3)
+
+			if check.bytesize != 3
 				raise SyntaxError, 'unexpected EOF'
+			elsif check != 'rue'
+				raise SyntaxError, "expected true, found t#{check}"
 			end
-			
+
 			true
 		else
-			unless @source.read(4).bytesize == 4
+			check = @source.read(4)
+
+			if check.bytesize != 4
 				raise SyntaxError, 'unexpected EOF'
+			elsif check != 'alse'
+				raise SyntaxError, "expected false, found f#{check}"
 			end
 
 			false
