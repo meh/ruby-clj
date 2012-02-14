@@ -74,7 +74,7 @@ describe Clojure do
 			Clojure.dump([1, 2, 3]).should == '[1 2 3]'
 		end
 
-		it 'dumps correctly hases' do
+		it 'dumps correctly hashes' do
 			Clojure.dump({ :a => 'b' }).should == '{:a "b"}'
 		end
 	end
@@ -169,8 +169,14 @@ describe Clojure do
 			Clojure.parse('(1 2 3)').should == [1, 2, 3]
 			Clojure.parse('(23())').should == [23, []]
 		end
+
+		it 'parses correctly sets' do
+			Clojure.parse('#{1 2 3}').should == [1, 2, 3]
+
+			expect { Clojure.parse('#{1 1}') }.should raise_error
+		end
 		
-		it 'parses correctly hashes' do
+		it 'parses correctly maps' do
 			Clojure.parse('{:a "b"}').should == { :a => 'b' }
 		end
 	end
