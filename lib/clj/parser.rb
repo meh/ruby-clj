@@ -13,6 +13,7 @@ require 'stringio'
 class Clojure
 
 class Parser
+	NUMBERS   = '0' .. '9'
 	IGNORE    = [" ", ",", "\n", "\r", "\t"]
 	SEPARATOR = ['"', '{', '}', '(', ')', '[', ']', '#']
 	BOTH      = IGNORE + SEPARATOR
@@ -55,7 +56,7 @@ class Parser
 private
 	def next_type (ch)
 		case ch
-		when '0'..'9', '-', '+' then :number
+		when NUMBERS, '-', '+' then :number
 		when 't', 'f'           then :boolean
 		when 'n'                then :nil
 		when '\\'               then :char
@@ -65,7 +66,7 @@ private
 		when '('                then :list
 		when '['                then :vector
 		when '#'
-			case read(1)
+			case @source.read(1)
 			when 'i' then :instant
 			when '{' then :set
 			when '"' then :regexp
@@ -82,7 +83,7 @@ private
 	end
 
 	def read_nil (ch)
-		unless read(2).bytesize == 2
+		unless @source.read(2).bytesize == 2
 			raise SyntaxError, 'unexpected EOF'
 		end
 
@@ -91,13 +92,13 @@ private
 
 	def read_boolean (ch)
 		if ch == 't'
-			unless read(3).bytesize == 3
+			unless @source.read(3).bytesize == 3
 				raise SyntaxError, 'unexpected EOF'
 			end
 			
 			true
 		else
-			unless read(4).bytesize == 4
+			unless @source.read(4).bytesize == 4
 				raise SyntaxError, 'unexpected EOF'
 			end
 
@@ -108,7 +109,7 @@ private
 	def read_number (ch)
 		piece = ch
 
-		while (ch = read(1)) && !BOTH.include?(ch)
+		while (ch = @source.read(1)) && !both?(ch)
 			piece << ch
 		end
 
@@ -134,10 +135,10 @@ private
 	end
 
 	def read_char (ch)
-		ch = read(1)
+		ch = @source.read(1)
 
 		unescape(if ch == 'u' && lookahead(1) =~ /[0-9a-fA-F]/
-			"\\u#{read(4)}"
+			"\\u#{@source.read(4)}"
 		else
 			ch
 		end)
@@ -146,7 +147,7 @@ private
 	def read_keyword (ch)
 		result = ''
 
-		while (ch = read(1)) && !KEYWORD.include?(ch)
+		while (ch = @source.read(1)) && !keyword?(ch)
 			result << ch
 		end
 
@@ -158,13 +159,13 @@ private
 	def read_string (ch)
 		result = ''
 
-		while (ch = read(1)) != '"'
+		while (ch = @source.read(1)) != '"'
 			raise SyntaxError, 'unexpected EOF' unless ch
 
 			result << ch
 
 			if ch == '\\'
-				result << read(1)
+				result << @source.read(1)
 			end
 		end
 
@@ -172,7 +173,7 @@ private
 	end
 
 	def read_instant (ch)
-		read(3)
+		@source.read(3)
 
 		DateTime.rfc3339(read_string(ignore(false)))
 	end
@@ -180,13 +181,13 @@ private
 	def read_regexp (ch)
 		result = ''
 
-		while (ch = read(1)) != '"'
+		while (ch = @source.read(1)) != '"'
 			raise SyntaxError, 'unexpected EOF' unless ch
 
 			result << ch
 
 			if ch == '\\'
-				result << read(1)
+				result << @source.read(1)
 			end
 		end
 
@@ -203,7 +204,7 @@ private
 			ignore
 		end
 
-		read(1)
+		@source.read(1)
 
 		result
 	end
@@ -218,7 +219,7 @@ private
 			ignore
 		end
 
-		read(1)
+		@source.read(1)
 
 		result
 	end
@@ -233,7 +234,7 @@ private
 			ignore
 		end
 
-		read(1)
+		@source.read(1)
 
 		if result.uniq!
 			raise SyntaxError, 'the set contains non unique values'
@@ -255,7 +256,7 @@ private
 			result[key] = value
 		end
 
-		read(1)
+		@source.read(1)
 
 		result
 	end
@@ -284,10 +285,6 @@ private
 		}
 	end
 
-	def read (length)
-		@source.read(length)
-	end
-
 	def lookahead (length = nil)
 		original = @source.tell
 		result   = @source.read(length)
@@ -298,7 +295,7 @@ private
 	end
 
 	def ignore (ungetc = true)
-		while IGNORE.include?(ch = read(1)); end
+		while ignore?(ch = @source.read(1)); end
 
 		return false unless ch
 
@@ -308,7 +305,31 @@ private
 	def revert (ch)
 		return unless ch
 
-		@source.ungetc(ch[0])
+		@source.seek -1, IO::SEEK_CUR
+	end
+
+	def ignore? (ch)
+		if ch == ' ' || ch == ',' || ch == "\n" || ch == "\r" || ch == "\t"
+			true
+		else
+			false
+		end
+	end
+
+	def both? (ch)
+		if ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == "\n" || ch == "\r" || ch == "\t"
+			true
+		else
+			false
+		end
+	end
+
+	def keyword? (ch)
+		if ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == "'" || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == "\n" || ch == "\r" || ch == "\t"
+			true
+		else
+			false
+		end
 	end
 end
 
