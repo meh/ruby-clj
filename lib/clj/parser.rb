@@ -13,11 +13,7 @@ require 'stringio'
 class Clojure
 
 class Parser
-	NUMBERS   = '0' .. '9'
-	IGNORE    = [" ", ",", "\n", "\r", "\t"]
-	SEPARATOR = ['"', '{', '}', '(', ')', '[', ']', '#']
-	BOTH      = IGNORE + SEPARATOR
-	KEYWORD   = ["'", '^', '@', '`', '~', '\\', ';'] + BOTH
+	NUMBERS = '0' .. '9'
 
 	# Unescape characters in strings.
 	UNESCAPE_MAP = Hash.new { |h, k| h[k] = k.chr }
