@@ -306,7 +306,9 @@ private
 	end
 
 	def revert (ch)
-		@source.ungetc(ch)
+		return unless ch
+
+		@source.ungetc(ch[0])
 	end
 end
 

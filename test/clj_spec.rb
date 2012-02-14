@@ -94,7 +94,10 @@ describe Clojure do
 
 		it 'parses correctly chars' do
 			Clojure.parse('\d').should     == 'd'
-			Clojure.parse('\u4343').should == "\u4343"
+
+			unless RUBY_VERSION.include? '1.8'
+				Clojure.parse('\u4343').should == "\u4343"
+			end
 		end
 
 		it 'parses correctly strings' do
