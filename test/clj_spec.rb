@@ -122,10 +122,14 @@ describe Clojure do
 		it 'parses correctly integers' do
 			Clojure.parse('2').should    == 2
 			Clojure.parse('1337').should == 1337
+
+			Clojure.parse('16rFF').should == 255
+			Clojure.parse('2r11').should  == 3
 		end
 
 		it 'parses correctly floats' do
 			Clojure.parse('2.3').should == 2.3
+			Clojure.parse('2e3').should == 2000
 		end
 
 		it 'parses correctly rationals' do

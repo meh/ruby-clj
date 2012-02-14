@@ -125,7 +125,11 @@ private
 
 		if piece.include? '/'
 			Rational(piece)
-		elsif piece.include? '.' or piece.end_with? 'M'
+		elsif piece.include? 'r'
+			base, number = piece.split('r', 2)
+
+			number.to_i(base.to_i)
+		elsif piece.include? '.' or piece.include? 'e' or piece.end_with? 'M'
 			if piece.end_with? 'M'
 				piece[-1] = ''
 
