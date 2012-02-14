@@ -92,6 +92,11 @@ describe Clojure do
 			Clojure.parse('nil').should == nil
 		end
 
+		it 'parses correctly chars' do
+			Clojure.parse('\d').should     == 'd'
+			Clojure.parse('\u4343').should == "\u4343"
+		end
+
 		it 'parses correctly strings' do
 			Clojure.parse('"lol"').should      == "lol"
 			Clojure.parse('"lol\nlol"').should == "lol\nlol"

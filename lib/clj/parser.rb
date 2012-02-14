@@ -133,6 +133,16 @@ private
 		end
 	end
 
+	def read_char (ch)
+		ch = read(1)
+
+		unescape(if ch == 'u' && lookahead(1) =~ /[0-9a-fA-F]/
+			"\\u#{read(4)}"
+		else
+			ch
+		end)
+	end
+
 	def read_keyword (ch)
 		result = ''
 
@@ -158,27 +168,7 @@ private
 			end
 		end
 
-		result.gsub(%r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n) {|escape|
-			if u = UNESCAPE_MAP[$&[1]]
-				next u
-			end
-
-			bytes = EMPTY_8BIT_STRING.dup
-
-			i = 0
-			while escape[6 * i] == ?\\ && escape[6 * i + 1] == ?u
-				bytes << escape[6 * i + 2, 2].to_i(16) << escape[6 * i + 4, 2].to_i(16)
-
-				i += 1
-			end
-
-			if bytes.respond_to? :force_encoding
-				bytes.force_encoding 'UTF-16be'
-				bytes.encode 'UTF-8'
-			else
-				bytes
-			end
-		}
+		unescape(result)
 	end
 
 	def read_instant (ch)
@@ -268,6 +258,30 @@ private
 		read(1)
 
 		result
+	end
+
+	def unescape (string)
+		string.gsub(%r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n) {|escape|
+			if u = UNESCAPE_MAP[$&[1]]
+				next u
+			end
+
+			bytes = EMPTY_8BIT_STRING.dup
+
+			i = 0
+			while escape[6 * i] == ?\\ && escape[6 * i + 1] == ?u
+				bytes << escape[6 * i + 2, 2].to_i(16) << escape[6 * i + 4, 2].to_i(16)
+
+				i += 1
+			end
+
+			if bytes.respond_to? :force_encoding
+				bytes.force_encoding 'UTF-16be'
+				bytes.encode 'UTF-8'
+			else
+				bytes
+			end
+		}
 	end
 
 	def read (length)
