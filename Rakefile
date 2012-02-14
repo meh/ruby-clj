@@ -8,3 +8,8 @@ task :test do
 
   sh 'rspec clj_spec.rb --color --format doc'
 end
+
+task :bench do
+	puts "Ruby: #{`test/bench/bench.rb`.strip}"
+	puts "Python: #{`test/bench/bench.py`.strip}"
+end
