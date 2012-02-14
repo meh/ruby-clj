@@ -149,6 +149,7 @@ describe Clojure do
 			Clojure.parse('[[] [] []]').should == [[], [], []]
 
 			Clojure.parse('[1 2 3]').should == [1, 2, 3]
+			Clojure.parse('[23[]]').should  == [23, []]
 		end
 		
 		it 'parses correctly lists' do
@@ -157,6 +158,7 @@ describe Clojure do
 			Clojure.parse('(() () ())').should == [[], [], []]
 
 			Clojure.parse('(1 2 3)').should == [1, 2, 3]
+			Clojure.parse('(23())').should == [23, []]
 		end
 		
 		it 'parses correctly hashes' do
