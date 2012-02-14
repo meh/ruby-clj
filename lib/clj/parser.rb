@@ -306,18 +306,14 @@ private
 		result
 	end
 
-	def ignore (ungetc = true)
+	def ignore (rev = true)
 		while ignore?(ch = @source.read(1)); end
 
-		return false unless ch
-
-		ungetc ? revert(ch) : ch
+		rev ? revert(ch) : ch if ch
 	end
 
 	def revert (ch)
-		return unless ch
-
-		@source.seek -1, IO::SEEK_CUR
+		@source.seek -1, IO::SEEK_CUR if ch
 	end
 
 	def ignore? (ch)
