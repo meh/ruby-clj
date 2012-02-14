@@ -9,6 +9,7 @@
 #++
 
 require 'date'
+require 'bigdecimal'
 
 [Numeric, TrueClass, FalseClass, NilClass].each {|klass|
 	klass.instance_eval {
@@ -22,7 +23,7 @@ class Symbol
 	def to_clj (options = {})
 		result = inspect
 
-		unless Clojure::Parser::KEYWORD === result
+		if Clojure::Parser::KEYWORD.any? { |c| result.include? c }
 			raise ArgumentError, "#{result} cannot be transformed into clojure"
 		end
 
