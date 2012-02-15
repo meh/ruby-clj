@@ -99,7 +99,16 @@ describe Clojure do
 		end
 
 		it 'parses correctly chars' do
-			Clojure.parse('\d').should     == 'd'
+			Clojure.parse('\d').should == 'd'
+			Clojure.parse('\a').should == 'a'
+			Clojure.parse('\0').should == '0'
+
+			Clojure.parse('\newline').should   == "\n"
+			Clojure.parse('\space').should     == ' '
+			Clojure.parse('\tab').should       == "\t"
+			Clojure.parse('\backspace').should == "\b"
+			Clojure.parse('\formfeed').should  == "\f"
+			Clojure.parse('\return').should    == "\r"
 
 			unless RUBY_VERSION.include? '1.8'
 				Clojure.parse('\u4343').should == "\u4343"

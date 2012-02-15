@@ -49,11 +49,14 @@ def number(v):
     else:
         return int(v)
 
+_STOP_CHARS = [" ", ",", "\n", "\r"]
+_COLL_OPEN_CHARS = ["#", "[", "{"]
+_EXTRA_NUM_CHARS = ["-", "+", ".", "e", "E"]
+
 class CljDecoder(object):
     def __init__(self, fd):
         self.fd = fd
         self.value_stack = []
-        self.stop_chars = [" ", ",", "\n", "\r"]
         self.terminator = None ## for collection type
 
     def decode(self):
@@ -68,27 +71,27 @@ class CljDecoder(object):
         * a flag to indicate if it's a collection
         """
         if c.isdigit() or c =='-':
-            return ("number", False)
+            return ("number", False, None)
         elif c == 't' or c == 'f': ## true/false
-            return ("boolean", False)
+            return ("boolean", False, None)
         elif c == 'n': ## nil
-            return ("nil", False)
+            return ("nil", False, None)
         elif c == '\\' :
-            return ("char", False)
+            return ("char", False, None)
         elif c == ':':
-            return ("keyword", False)
+            return ("keyword", False, None)
         elif c == '"':
-            return ("string", False)
+            return ("string", False, None)
         elif c == '#':
-            return ("set", True)
+            return ("set", True, "}")
         elif c == '{':
-            return ("map", True)
+            return ("dict", True, "}")
         elif c == '(':
-            return ("list", True)
+            return ("list", True, ")")
         elif c == '[':
-            return ('vector', True)
+            return ('list', True, "]")
         else:
-            return (None, False)
+            return (None, False, None)
 
     def __read_token(self):
         fd = self.fd
@@ -96,32 +99,23 @@ class CljDecoder(object):
         c = fd.read(1)
 
         ## skip all stop chars if necessary 
-        while c in self.stop_chars:
+        while c in _STOP_CHARS:
             c = fd.read(1)
 
         ## raise exception when unexpected EOF found
         if c == '':
             raise ValueError("Unexpected EOF")
 
-        t, coll = self.__get_type_from_char(c)
+        t, coll, term = self.__get_type_from_char(c)
         if coll:
             ## move cursor 
             if t == "set":
                 ## skip {
                 fd.read(1)
-                self.terminator = "}"
-                self.container = "set"
-            elif t == "list":
-                self.terminator = ")"
-                self.container = "list"
-            elif t == "vector":
-                self.terminator = "]"
-                self.container = "list"
-            elif t == "map":
-                self.terminator = "}"
-                self.container = "dict"
+
+            self.terminator = term
                 
-            self.value_stack.append(([], self.terminator, self.container))
+            self.value_stack.append(([], self.terminator, t))
             return None
         else:
             v = None ## token value
@@ -138,7 +132,7 @@ class CljDecoder(object):
 
             elif t == "char":
                 buf = []
-                while c is not self.terminator and c is not "" and c not in self.stop_chars:
+                while c is not self.terminator and c is not "" and c not in _STOP_CHARS:
                     c = fd.read(1)
                     buf.append(c)
                 
@@ -151,16 +145,22 @@ class CljDecoder(object):
 
             elif t == "number":
                 buf = []
-                while c is not self.terminator and c is not "" and c not in self.stop_chars:
+                while c.isdigit() or (c in _EXTRA_NUM_CHARS):
                     buf.append(c)
                     c = fd.read(1)
                 e = c
                 numstr = ''.join(buf)
                 v = number(numstr)
 
+                ## special case for 
+                ## [23[12]]
+                ## this is a valid clojure form
+                if e in _COLL_OPEN_CHARS:
+                    fd.seek(-1, os.SEEK_CUR)
+
             elif t == "keyword":
                 buf = []    ##skip the leading ":"
-                while c is not self.terminator and c is not "" and c not in self.stop_chars:
+                while c is not self.terminator and c is not "" and c not in _STOP_CHARS:
                     c = fd.read(1)
                     buf.append(c)
  
@@ -183,16 +183,16 @@ class CljDecoder(object):
                 e = c
 
             if e is self.terminator:
-                current_scope, _, self.container = self.value_stack.pop()
+                current_scope, _, container = self.value_stack.pop()
 
                 if r:
                     current_scope.append(v)
                     
-                if self.container == "set":
+                if container == "set":
                     v = set(current_scope)
-                elif self.container == "list":
+                elif container == "list":
                     v = current_scope
-                elif self.container == "dict":
+                elif container == "dict":
                     v = {}
                     for i in range(0, len(current_scope), 2):
                         v[current_scope[i]] = current_scope[i+1]

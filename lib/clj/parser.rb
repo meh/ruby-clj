@@ -121,15 +121,15 @@ private
 			piece << ch
 		end
 
-		revert(ch)
+		revert if ch
 
 		if piece.include? '/'
 			Rational(piece)
-		elsif piece.include? 'r'
-			base, number = piece.split('r', 2)
+		elsif piece.include? 'r' or piece.include? 'R'
+			base, number = piece.split(/r/i, 2)
 
 			number.to_i(base.to_i)
-		elsif piece.include? '.' or piece.include? 'e' or piece.end_with? 'M'
+		elsif piece.include? '.' or piece.include? 'e' or piece.include? 'E' or piece.end_with? 'M'
 			if piece.end_with? 'M'
 				piece[-1] = ''
 
@@ -147,13 +147,27 @@ private
 	end
 
 	def read_char (ch)
-		ch = @source.read(1)
-
-		unescape(if ch == 'u' && lookahead(1) =~ /[0-9a-fA-F]/
-			"\\u#{@source.read(4)}"
+		if (ahead = lookahead(2)) && (!ahead[1] || both?(ahead[1]))
+			@source.read(1)
+		elsif (ahead = lookahead(8)) && ahead[0, 7] == 'newline' && (!ahead[7] || both?(ahead[7]))
+			@source.read(7) and "\n"
+		elsif (ahead = lookahead(6)) && ahead[0, 5] == 'space' && (!ahead[5] || both?(ahead[5]))
+			@source.read(5) and ' '
+		elsif (ahead = lookahead(4)) && ahead[0, 3] == 'tab' && (!ahead[3] || both?(ahead[3]))
+			@source.read(3) and "\t"
+		elsif (ahead = lookahead(10)) && ahead[0, 9] == 'backspace' && (!ahead[9] || both?(ahead[9]))
+			@source.read(9) and "\b"
+		elsif (ahead = lookahead(9)) && ahead[0, 8] == 'formfeed' && (!ahead[8] || both?(ahead[8]))
+			@source.read(8) and "\f"
+		elsif (ahead = lookahead(7)) && ahead[0, 6] == 'return' && (!ahead[6] || both?(ahead[6]))
+			@source.read(6) and "\r"
+		elsif (ahead = lookahead(6)) && ahead[0, 5] =~ /u([0-9|a-f|A-F]{4})/ && (!ahead[5] || both?(ahead[5]))
+			[@source.read(5)[1, 4].to_i(16)].pack('U')
+		elsif (ahead = lookahead(5)) && ahead[0, 4] =~ /o([0-3][0-7]?[0-7]?)/ && (!ahead[4] || both?(ahead[4]))
+			@source.read(4)[1, 3].to_i(8).chr
 		else
-			ch
-		end)
+			raise SyntaxError, 'unknown character type'
+		end
 	end
 
 	def read_keyword (ch)
@@ -163,7 +177,7 @@ private
 			result << ch
 		end
 
-		revert(ch)
+		revert if ch
 
 		result.to_sym
 	end
@@ -181,7 +195,27 @@ private
 			end
 		end
 
-		unescape(result)
+		result.gsub(%r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n) {|escape|
+			if u = UNESCAPE_MAP[$&[1]]
+				next u
+			end
+
+			bytes = EMPTY_8BIT_STRING.dup
+
+			i = 0
+			while escape[6 * i] == ?\\ && escape[6 * i + 1] == ?u
+				bytes << escape[6 * i + 2, 2].to_i(16) << escape[6 * i + 4, 2].to_i(16)
+
+				i += 1
+			end
+
+			if bytes.respond_to? :force_encoding
+				bytes.force_encoding 'UTF-16be'
+				bytes.encode 'UTF-8'
+			else
+				bytes
+			end
+		}
 	end
 
 	def read_instant (ch)
@@ -274,34 +308,13 @@ private
 	end
 
 	def unescape (string)
-		string.gsub(%r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n) {|escape|
-			if u = UNESCAPE_MAP[$&[1]]
-				next u
-			end
-
-			bytes = EMPTY_8BIT_STRING.dup
-
-			i = 0
-			while escape[6 * i] == ?\\ && escape[6 * i + 1] == ?u
-				bytes << escape[6 * i + 2, 2].to_i(16) << escape[6 * i + 4, 2].to_i(16)
-
-				i += 1
-			end
-
-			if bytes.respond_to? :force_encoding
-				bytes.force_encoding 'UTF-16be'
-				bytes.encode 'UTF-8'
-			else
-				bytes
-			end
-		}
+		string
 	end
 
-	def lookahead (length = nil)
-		original = @source.tell
-		result   = @source.read(length)
+	def lookahead (length)
+		result = @source.read(length)
 
-		@source.seek(original)
+		@source.seek(-result.length, IO::SEEK_CUR)
 
 		result
 	end
@@ -309,11 +322,11 @@ private
 	def ignore (rev = true)
 		while ignore?(ch = @source.read(1)); end
 
-		rev ? revert(ch) : ch if ch
+		rev ? revert : ch if ch
 	end
 
-	def revert (ch)
-		@source.seek -1, IO::SEEK_CUR if ch
+	def revert (n = 1)
+		@source.seek -n, IO::SEEK_CUR
 	end
 
 	def ignore? (ch)
