@@ -8,9 +8,6 @@
 #  0. You just DO WHAT THE FUCK YOU WANT TO.
 #++
 
-require 'date'
-require 'bigdecimal'
-
 [Numeric, TrueClass, FalseClass, NilClass].each {|klass|
 	klass.instance_eval {
 		define_method :to_clj do |*|

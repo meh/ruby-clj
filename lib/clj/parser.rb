@@ -57,14 +57,14 @@ private
 	def next_type (ch)
 		case ch
 		when NUMBERS, '-', '+' then :number
-		when 't', 'f'           then :boolean
-		when 'n'                then :nil
-		when '\\'               then :char
-		when ':'                then :keyword
-		when '"'                then :string
-		when '{'                then :map
-		when '('                then :list
-		when '['                then :vector
+		when 't', 'f'          then :boolean
+		when 'n'               then :nil
+		when '\\'              then :char
+		when ':'               then :keyword
+		when '"'               then :string
+		when '{'               then :map
+		when '('               then :list
+		when '['               then :vector
 		when '#'
 			case @source.read(1)
 			when 'i' then :instant

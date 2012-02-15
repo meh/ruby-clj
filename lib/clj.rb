@@ -8,6 +8,9 @@
 #  0. You just DO WHAT THE FUCK YOU WANT TO.
 #++
 
+require 'date'
+require 'bigdecimal'
+
 require 'clj/parser'
 require 'clj/types'
 
