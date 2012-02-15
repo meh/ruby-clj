@@ -1,4 +1,5 @@
 #! /usr/bin/env ruby
+require 'rubygems'
 require 'clj'
 
 s = "[1 2 3 true false nil {:a 21.3 :b 43.2} \"Hello\"]"
