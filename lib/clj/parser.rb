@@ -15,6 +15,10 @@ class Clojure
 class Parser
 	NUMBERS = '0' .. '9'
 
+	STRING_REGEX  = %r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n
+	UNICODE_REGEX = /u([0-9|a-f|A-F]{4})/
+	OCTAL_REGEX   = /o([0-3][0-7]?[0-7]?)/
+
 	# Unescape characters in strings.
 	UNESCAPE_MAP = Hash.new { |h, k| h[k] = k.chr }
 	UNESCAPE_MAP.update({
@@ -81,7 +85,7 @@ private
 	def read_nil (ch)
 		check = @source.read(2)
 
-		if check.bytesize != 2
+		if check.length != 2
 			raise SyntaxError, 'unexpected EOF'
 		elsif check != 'il'
 			raise SyntaxError, "expected nil, found n#{check}"
@@ -94,7 +98,7 @@ private
 		if ch == 't'
 			check = @source.read(3)
 
-			if check.bytesize != 3
+			if check.length != 3
 				raise SyntaxError, 'unexpected EOF'
 			elsif check != 'rue'
 				raise SyntaxError, "expected true, found t#{check}"
@@ -104,7 +108,7 @@ private
 		else
 			check = @source.read(4)
 
-			if check.bytesize != 4
+			if check.length != 4
 				raise SyntaxError, 'unexpected EOF'
 			elsif check != 'alse'
 				raise SyntaxError, "expected false, found f#{check}"
@@ -161,9 +165,9 @@ private
 			@source.read(8) and "\f"
 		elsif (ahead = lookahead(7)) && ahead[0, 6] == 'return' && (!ahead[6] || both?(ahead[6]))
 			@source.read(6) and "\r"
-		elsif (ahead = lookahead(6)) && ahead[0, 5] =~ /u([0-9|a-f|A-F]{4})/ && (!ahead[5] || both?(ahead[5]))
+		elsif (ahead = lookahead(6)) && ahead[0, 5] =~ UNICODE_REGEX && (!ahead[5] || both?(ahead[5]))
 			[@source.read(5)[1, 4].to_i(16)].pack('U')
-		elsif (ahead = lookahead(5)) && ahead[0, 4] =~ /o([0-3][0-7]?[0-7]?)/ && (!ahead[4] || both?(ahead[4]))
+		elsif (ahead = lookahead(5)) && ahead[0, 4] =~ OCTAL_REGEX && (!ahead[4] || both?(ahead[4]))
 			@source.read(4)[1, 3].to_i(8).chr
 		else
 			raise SyntaxError, 'unknown character type'
@@ -195,7 +199,7 @@ private
 			end
 		end
 
-		result.gsub(%r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n) {|escape|
+		result.gsub(STRING_REGEX) {|escape|
 			if u = UNESCAPE_MAP[$&[1]]
 				next u
 			end
