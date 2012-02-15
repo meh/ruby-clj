@@ -21,7 +21,7 @@ class Parser
 
 	# Unescape characters in strings.
 	UNESCAPE_MAP = Hash.new { |h, k| h[k] = k.chr }
-	UNESCAPE_MAP.update({
+	UNESCAPE_MAP.merge!(
 		?"  => '"',
 		?\\ => '\\',
 		?/  => '/',
@@ -31,7 +31,7 @@ class Parser
 		?r  => "\r",
 		?t  => "\t",
 		?u  => nil,
-	})
+	)
 
 	EMPTY_8BIT_STRING = ''
 
