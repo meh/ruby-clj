@@ -30,7 +30,7 @@ class Parser
 		?n  => "\n",
 		?r  => "\r",
 		?t  => "\t",
-		?u  => nil,
+		?u  => nil
 	)
 
 	EMPTY_8BIT_STRING = ''
