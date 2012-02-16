@@ -11,7 +11,12 @@
 require 'date'
 require 'bigdecimal'
 
-require 'clj/parser'
+if RUBY_ENGINE == 'ruby' || RUBY_ENGINE == 'rbx'
+	require 'clj/parser_ext'
+else
+	require 'clj/parser'
+end
+
 require 'clj/types'
 
 class Clojure
