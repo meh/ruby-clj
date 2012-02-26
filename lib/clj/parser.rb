@@ -10,7 +10,7 @@
 
 require 'stringio'
 
-class Clojure
+module Clojure
 
 class Parser
 	NUMBERS = '0' .. '9'
@@ -43,10 +43,10 @@ class Parser
 		@source  = source.is_a?(String) ? StringIO.new(source) : source
 		@options = options
 
-		@map_class    = options[:map_class]    || Hash
-		@vector_class = options[:vector_class] || Array
-		@list_class   = options[:list_class]   || Array
-		@set_class    = options[:set_class]    || Array
+		@map_class    = options[:map_class]    || Clojure::Map
+		@vector_class = options[:vector_class] || Clojure::Vector
+		@list_class   = options[:list_class]   || Clojure::List
+		@set_class    = options[:set_class]    || Clojure::Set
 	end
 
 	def parse
@@ -56,6 +56,7 @@ class Parser
 private
 	def next_type (ch)
 		case ch
+		when '^'               then :metadata
 		when NUMBERS, '-', '+' then :number
 		when 't', 'f'          then :boolean
 		when 'n'               then :nil
@@ -80,6 +81,26 @@ private
 		raise SyntaxError, 'unexpected EOF' unless ch
 
 		__send__ "read_#{next_type ch}", ch
+	end
+
+	def read_metadata (ch)
+		metadatas = [read_next]
+
+		while lookahead(1) == '^'
+			raise SyntaxError, 'unexpected EOF' unless @source.read(1)
+
+			metadatas.push(read_next)
+		end
+
+		value = read_next
+
+		unless value.respond_to? :metadata=
+			raise SyntaxError, 'the object cannot hold metadata'
+		end
+
+		metadatas.each { |m| value.metadata = m }
+
+		value
 	end
 
 	def read_nil (ch)
