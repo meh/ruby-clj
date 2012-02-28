@@ -338,10 +338,6 @@ private
 		result
 	end
 
-	def unescape (string)
-		string
-	end
-
 	def lookahead (length)
 		result = @source.read(length)
 
@@ -361,27 +357,15 @@ private
 	end
 
 	def ignore? (ch)
-		if ch == ' ' || ch == ',' || ch == "\n" || ch == "\r" || ch == "\t"
-			true
-		else
-			false
-		end
+		ch == ' ' || ch == ',' || ch == "\n" || ch == "\r" || ch == "\t"
 	end
 
 	def both? (ch)
-		if ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == "\n" || ch == "\r" || ch == "\t"
-			true
-		else
-			false
-		end
+		ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == "\n" || ch == "\r" || ch == "\t"
 	end
 
 	def keyword? (ch)
-		if ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == "'" || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == "\n" || ch == "\r" || ch == "\t"
-			true
-		else
-			false
-		end
+		ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == "'" || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == "\n" || ch == "\r" || ch == "\t"
 	end
 end
 

@@ -8,6 +8,9 @@
  *  0. You just DO WHAT THE FUCK YOU WANT TO.
  **/
 
+#include <stdbool.h>
+#include <ctype.h>
+
 #include "ruby.h"
 
 VALUE cClojure;
