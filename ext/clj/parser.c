@@ -13,8 +13,12 @@
 
 #include "ruby.h"
 
-VALUE cClojure;
-VALUE cParser;
+static VALUE cClojure;
+static VALUE cParser;
+
+static VALUE STRING_REGEX;
+static VALUE UNICODE_REGEX;
+static VALUE OCTAL_REGEX;
 
 #define _INSIDE_PARSER
 typedef enum {
@@ -60,28 +64,28 @@ static VALUE t_init (int argc, VALUE* argv, VALUE self)
 	rb_iv_set(self, "@source", source);
 	rb_iv_set(self, "@options", options);
 
-	if (NIL_P(tmp = rb_hash_aref(options, rb_intern("map_class")))) {
+	if (!NIL_P(tmp = rb_hash_aref(options, rb_intern("map_class")))) {
 		rb_iv_set(self, "@map_class", tmp);
 	}
 	else {
 		rb_iv_set(self, "@map_class", rb_const_get(cClojure, rb_intern("Map")));
 	}
 
-	if (NIL_P(tmp = rb_hash_aref(options, rb_intern("vector_class")))) {
+	if (!NIL_P(tmp = rb_hash_aref(options, rb_intern("vector_class")))) {
 		rb_iv_set(self, "@vector_class", tmp);
 	}
 	else {
 		rb_iv_set(self, "@vector_class", rb_const_get(cClojure, rb_intern("Vector")));
 	}
 
-	if (NIL_P(tmp = rb_hash_aref(options, rb_intern("list_class")))) {
+	if (!NIL_P(tmp = rb_hash_aref(options, rb_intern("list_class")))) {
 		rb_iv_set(self, "@list_class", tmp);
 	}
 	else {
 		rb_iv_set(self, "@list_class", rb_const_get(cClojure, rb_intern("Vector")));
 	}
 
-	if (NIL_P(tmp = rb_hash_aref(options, rb_intern("set_class")))) {
+	if (!NIL_P(tmp = rb_hash_aref(options, rb_intern("set_class")))) {
 		rb_iv_set(self, "@set_class", tmp);
 	}
 	else {
@@ -111,4 +115,15 @@ Init_parser_ext (void)
 
 	rb_define_method(cParser, "initialize", t_init, -1);
 	rb_define_method(cParser, "parse", t_parse, 0);
+
+	VALUE args[] = { Qnil };
+
+	args[0]      = rb_str_new_cstr("(?:\\\\[\\\\bfnrt\"/]|(?:\\\\u(?:[A-Fa-f\\d]{4}))+|\\\\[\\x20-\\xff])");
+	STRING_REGEX = rb_class_new_instance(1, args, rb_cRegexp);
+
+	args[0]       = rb_str_new_cstr("u([0-9|a-f|A-F]{4})");
+	UNICODE_REGEX = rb_class_new_instance(1, args, rb_cRegexp);
+
+	args[0]     = rb_str_new_cstr("o([0-3][0-7]?[0-7]?)");
+	OCTAL_REGEX = rb_class_new_instance(1, args, rb_cRegexp);
 }

@@ -11,14 +11,6 @@
 require 'date'
 require 'bigdecimal'
 
-#if RUBY_ENGINE == 'ruby' || RUBY_ENGINE == 'rbx'
-#	require 'clj/parser_ext'
-#else
-	require 'clj/parser'
-#end
-
-require 'clj/types'
-
 module Clojure
 	def self.parse (*args)
 		Clojure::Parser.new(*args).parse
@@ -29,4 +21,12 @@ module Clojure
 
 		what.to_clj(options)
 	end
+end
+
+require 'clj/types'
+
+if RUBY_ENGINE == 'ruby' || RUBY_ENGINE == 'rbx'
+	require 'clj/parser_ext'
+else
+	require 'clj/parser'
 end

@@ -156,8 +156,6 @@ private
 			number.to_i(base.to_i)
 		elsif piece.include? '.' or piece.include? 'e' or piece.include? 'E' or piece.end_with? 'M'
 			if piece.end_with? 'M'
-				piece[-1] = ''
-
 				BigDecimal(piece)
 			else
 				Float(piece)
@@ -341,7 +339,9 @@ private
 	def lookahead (length)
 		result = @source.read(length)
 
-		@source.seek(-result.length, IO::SEEK_CUR)
+		if result
+			@source.seek(-result.length, IO::SEEK_CUR)
+		end
 
 		result
 	end

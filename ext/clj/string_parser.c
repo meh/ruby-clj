@@ -10,23 +10,40 @@
 
 #ifdef _INSIDE_PARSER
 #define IS_EOF (string[*position] == '\0')
-#define IS_EOF_AFTER(n) (string[*position + n] == '\0')
+#define IS_EOF_AFTER(n) (string[*position + (n)] == '\0')
 #define CURRENT (string[*position])
-#define AFTER(n) (string[*position + 1])
-#define SEEK(n) (*position += n)
+#define CURRENT_PTR (&string[*position])
+#define AFTER(n) (string[*position + (n)])
+#define AFTER_PTR(n) (&string[*position + (n)])
+#define BEFORE(n) (string[*position - (n)])
+#define BEFORE_PTR(n) (&string[*position - (n)])
+#define SEEK(n) (*position += (n))
 #define IS_IGNORED(ch) (isspace(ch) || ch == ',')
 #define IS_BOTH(ch) (ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == '\n' || ch == '\r' || ch == '\t')
 #define IS_KEYWORD(ch) (ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == '\'' || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == '\n' || ch == '\r' || ch == '\t')
+#define IS_NOT_EOF_UP_TO(n) (is_not_eof_up_to(string, position, n))
+#define IS_EQUAL_UP_TO(str, n) (strncmp(CURRENT_PTR, str, (n)) == 0)
+#define IS_EQUAL(str) IS_EQUAL_UP_TO(str, strlen(str))
+#define CALL(what) (what(self, string, position))
 
 static VALUE string_read_next (VALUE self, char* string, size_t* position);
 
-static void string_ignore (VALUE self, char* string, size_t* position)
+static inline bool is_not_eof_up_to (char* string, size_t* position, size_t n)
 {
-	while (!IS_EOF && (IS_IGNORED(CURRENT))) {
-		SEEK(1);
+	for (size_t i = 0; i < n; i++) {
+		if (IS_EOF_AFTER(i)) {
+			return false;
+		}
 	}
 
-	SEEK(-1);
+	return true;
+}
+
+static void string_ignore (VALUE self, char* string, size_t* position)
+{
+	while (!IS_EOF && IS_IGNORED(CURRENT)) {
+		SEEK(1);
+	}
 }
 
 static NodeType string_next_type (VALUE self, char* string, size_t* position)
@@ -68,7 +85,7 @@ static VALUE string_read_metadata (VALUE self, char* string, size_t* position)
 	VALUE* metadatas = NULL;
 	size_t length    = 0;
 
-	while (string[*position] == '^') {
+	while (CURRENT == '^') {
 		metadatas = realloc(metadatas, ++length * sizeof(VALUE));
 
 		SEEK(1);
@@ -95,13 +112,15 @@ static VALUE string_read_metadata (VALUE self, char* string, size_t* position)
 
 static VALUE string_read_nil (VALUE self, char* string, size_t* position)
 {
-	if (IS_EOF_AFTER(1) || IS_EOF_AFTER(2)) {
+	if (!IS_NOT_EOF_UP_TO(3)) {
 		rb_raise(rb_eSyntaxError, "unexpected EOF");
 	}
 
-	if (!(AFTER(1) == 'i' && AFTER(2) == 'l')) {
+	if (!IS_EQUAL_UP_TO("nil", 3)) {
 		rb_raise(rb_eSyntaxError, "expected nil, got n%c%c", AFTER(1), AFTER(2));
 	}
+
+	SEEK(3);
 
 	return Qnil;
 }
@@ -109,24 +128,28 @@ static VALUE string_read_nil (VALUE self, char* string, size_t* position)
 static VALUE string_read_boolean (VALUE self, char* string, size_t* position)
 {
 	if (CURRENT == 't') {
-		if (IS_EOF_AFTER(1) || IS_EOF_AFTER(2) || IS_EOF_AFTER(3)) {
+		if (!IS_NOT_EOF_UP_TO(4)) {
 			rb_raise(rb_eSyntaxError, "unexpected EOF");
 		}
 
-		if (!(AFTER(1) == 'r' && AFTER(2) == 'u' && AFTER(3) == 'e')) {
+		if (!IS_EQUAL_UP_TO("true", 4)) {
 			rb_raise(rb_eSyntaxError, "expected true, got t%c%c%c", AFTER(1), AFTER(2), AFTER(3));
 		}
+
+		SEEK(4);
 
 		return Qtrue;
 	}
 	else {
-		if (IS_EOF_AFTER(1) || IS_EOF_AFTER(2) || IS_EOF_AFTER(3) || IS_EOF_AFTER(4)) {
+		if (!IS_NOT_EOF_UP_TO(5)) {
 			rb_raise(rb_eSyntaxError, "unexpected EOF");
 		}
 
-		if (!(AFTER(1) == 'a' && AFTER(2) == 'l' && AFTER(3) == 's' && AFTER(4) == 'e')) {
+		if (!IS_EQUAL_UP_TO("false", 5)) {
 			rb_raise(rb_eSyntaxError, "expected false, got f%c%c%c%c", AFTER(1), AFTER(2), AFTER(3), AFTER(4));
 		}
+
+		SEEK(5);
 
 		return Qfalse;
 	}
@@ -143,17 +166,17 @@ static VALUE string_read_number (VALUE self, char* string, size_t* position)
 		length++;
 	}
 
-	rbPiece = rb_str_new(&string[*position], length);
-	cPiece  = rb_str_value_cstr(rbPiece);
-
 	SEEK(length);
+
+	rbPiece = rb_str_new(BEFORE_PTR(length), length);
+	cPiece  = StringValueCStr(rbPiece);
 
 	if (strchr(cPiece, '/')) {
 		return rb_funcall(rb_cObject, rb_intern("Rational"), 1, rbPiece);
 	}
 	else if ((tmp = strchr(cPiece, 'r')) || (tmp = strchr(cPiece, 'R'))) {
-		return rb_funcall(rb_str_new(cPiece, tmp - cPiece), rb_intern("to_i"), 1,
-			rb_funcall(rb_str_new_cstr(tmp), rb_intern("to_i"), 0));
+		return rb_funcall(rb_str_new_cstr(tmp + 1), rb_intern("to_i"), 1,
+			rb_funcall(rb_str_new(cPiece, tmp - cPiece), rb_intern("to_i"), 0));
 	}
 	else if (strchr(cPiece, '.') || strchr(cPiece, 'e') || strchr(cPiece, 'E') || cPiece[length - 1] == 'M') {
 		if (cPiece[length - 1] == 'M') {
@@ -172,42 +195,245 @@ static VALUE string_read_number (VALUE self, char* string, size_t* position)
 	}
 }
 
+static VALUE string_read_char (VALUE self, char* string, size_t* position)
+{
+	SEEK(1);
+
+	if (IS_EOF_AFTER(1) || IS_BOTH(AFTER(1))) {
+		SEEK(1); return rb_str_new(BEFORE_PTR(1), 1);
+	}
+	else if (IS_NOT_EOF_UP_TO(7) && IS_EQUAL_UP_TO("newline", 7) && (IS_EOF_AFTER(7) || IS_BOTH(AFTER(7)))) {
+		SEEK(7); return rb_str_new_cstr("\n");
+	}
+	else if (IS_NOT_EOF_UP_TO(5) && IS_EQUAL_UP_TO("space", 5) && (IS_EOF_AFTER(5) || IS_BOTH(AFTER(5)))) {
+		SEEK(5); return rb_str_new_cstr(" ");
+	}
+	else if (IS_NOT_EOF_UP_TO(3) && IS_EQUAL_UP_TO("tab", 3) && (IS_EOF_AFTER(3) || IS_BOTH(AFTER(3)))) {
+		SEEK(3); return rb_str_new_cstr("\t");
+	}
+	else if (IS_NOT_EOF_UP_TO(9) && IS_EQUAL_UP_TO("backspace", 9) && (IS_EOF_AFTER(9) || IS_BOTH(AFTER(9)))) {
+		SEEK(9); return rb_str_new_cstr("\b");
+	}
+	else if (IS_NOT_EOF_UP_TO(8) && IS_EQUAL_UP_TO("formfeed", 8) && (IS_EOF_AFTER(8) || IS_BOTH(AFTER(8)))) {
+		SEEK(8); return rb_str_new_cstr("\f");
+	}
+	else if (IS_NOT_EOF_UP_TO(6) && IS_EQUAL_UP_TO("return", 6) && (IS_EOF_AFTER(6) || IS_BOTH(AFTER(6)))) {
+		SEEK(6); return rb_str_new_cstr("\r");
+	}
+
+	// TODO: add unicode and octal chars support
+
+	rb_raise(rb_eSyntaxError, "unknown character type");
+}
+
+static VALUE string_read_keyword (VALUE self, char* string, size_t* position)
+{
+	size_t length = 0;
+
+	SEEK(1);
+
+	while (!IS_EOF_AFTER(length) && !IS_KEYWORD(AFTER(length))) {
+		length++;
+	}
+
+	SEEK(length);
+
+	return rb_funcall(rb_str_new(BEFORE_PTR(length), length), rb_intern("to_sym"), 0);
+}
+
+static VALUE string_read_string (VALUE self, char* string, size_t* position)
+{
+	size_t length = 0;
+
+	SEEK(1);
+
+	while (AFTER(length) != '"') {
+		if (IS_EOF_AFTER(length)) {
+			rb_raise(rb_eSyntaxError, "unexpected EOF");
+		}
+
+		if (AFTER(length) == '\\') {
+			length++;
+		}
+
+		length++;
+	}
+
+	SEEK(length + 1);
+
+	// TODO: make the escapes work properly
+
+	return rb_str_new(BEFORE_PTR(length + 1), length);
+}
+
+static VALUE string_read_regexp (VALUE self, char* string, size_t* position)
+{
+	size_t length = 0;
+	VALUE  args[] = { Qnil };
+
+	SEEK(2);
+
+	while (AFTER(length) != '"') {
+		if (IS_EOF_AFTER(length)) {
+			rb_raise(rb_eSyntaxError, "unexpected EOF");
+		}
+
+		if (AFTER(length) == '\\') {
+			length++;
+		}
+
+		length++;
+	}
+
+	SEEK(length + 1);
+
+	args[0] = rb_str_new(BEFORE_PTR(length + 1), length);
+
+	return rb_class_new_instance(1, args, rb_cRegexp);
+}
+
+static VALUE string_read_instant (VALUE self, char* string, size_t* position)
+{
+	SEEK(1);
+
+	if (!IS_NOT_EOF_UP_TO(4)) {
+		rb_raise(rb_eSyntaxError, "unexpected EOF");
+	}
+
+	if (!IS_EQUAL_UP_TO("inst", 4)) {
+		rb_raise(rb_eSyntaxError, "expected inst, got %c%c%c%c", AFTER(0), AFTER(1), AFTER(2), AFTER(3));
+	}
+
+	SEEK(4);
+
+	CALL(string_ignore);
+
+	return rb_funcall(rb_const_get(rb_cObject, rb_intern("DateTime")), rb_intern("rfc3339"), 1, CALL(string_read_string));
+}
+
+static VALUE string_read_list (VALUE self, char* string, size_t* position)
+{
+	VALUE result = rb_class_new_instance(0, NULL, rb_iv_get(self, "@list_class"));
+
+	SEEK(1); CALL(string_ignore);
+
+	while (CURRENT != ')') {
+		rb_funcall(result, rb_intern("<<"), 1, CALL(string_read_next));
+
+		CALL(string_ignore);
+	}
+
+	SEEK(1);
+
+	return result;
+}
+
+static VALUE string_read_vector (VALUE self, char* string, size_t* position)
+{
+	VALUE result = rb_class_new_instance(0, NULL, rb_iv_get(self, "@vector_class"));
+
+	SEEK(1); CALL(string_ignore);
+
+	while (CURRENT != ']') {
+		rb_funcall(result, rb_intern("<<"), 1, CALL(string_read_next));
+
+		CALL(string_ignore);
+	}
+
+	SEEK(1);
+
+	return result;
+}
+
+static VALUE string_read_set (VALUE self, char* string, size_t* position)
+{
+	VALUE result = rb_class_new_instance(0, NULL, rb_iv_get(self, "@set_class"));
+
+	SEEK(2); CALL(string_ignore);
+
+	while (CURRENT != '}') {
+		rb_funcall(result, rb_intern("<<"), 1, CALL(string_read_next));
+
+		CALL(string_ignore);
+	}
+
+	SEEK(1);
+
+	if (!NIL_P(rb_funcall(result, rb_intern("uniq!"), 0))) {
+		rb_raise(rb_eSyntaxError, "the set contains non unique values");
+	}
+
+	return result;
+}
+
+static VALUE string_read_map (VALUE self, char* string, size_t* position)
+{
+	VALUE result = rb_class_new_instance(0, NULL, rb_iv_get(self, "@map_class"));
+	VALUE key;
+	VALUE value;
+
+	SEEK(1); CALL(string_ignore);
+
+	while (CURRENT != '}') {
+		key = CALL(string_read_next);
+		CALL(string_ignore);
+		value = CALL(string_read_next);
+
+		rb_funcall(result, rb_intern("[]="), 2, key, value);
+	}
+
+	SEEK(1);
+
+	return result;
+}
 
 static VALUE string_read_next (VALUE self, char* string, size_t* position)
 {
-	string_ignore(self, string, position);
+	CALL(string_ignore);
 
 	if (IS_EOF) {
 		rb_raise(rb_eSyntaxError, "unexpected EOF");
 	}
 
-	switch (string_next_type(self, string, position)) {
-		case NODE_METADATA: return string_read_metadata(self, string, position);
-		case NODE_NUMBER:   return string_read_number(self, string, position);
-		case NODE_BOOLEAN:  return string_read_boolean(self, string, position);
-		case NODE_NIL:      return string_read_nil(self, string, position);
-		case NODE_CHAR:     return string_read_char(self, string, position);
-		case NODE_KEYWORD:  return string_read_keyword(self, string, position);
-		case NODE_STRING:   return string_read_string(self, string, position);
-		case NODE_MAP:      return string_read_map(self, string, position);
-		case NODE_LIST:     return string_read_list(self, string, position);
-		case NODE_VECTOR:   return string_read_vector(self, string, position);
-		case NODE_INSTANT:  return string_read_instant(self, string, position);
-		case NODE_SET:      return string_read_set(self, string, position);
-		case NODE_REGEXP:   return string_read_regexp(self, string, position);
+	switch (CALL(string_next_type)) {
+		case NODE_METADATA: return CALL(string_read_metadata);
+		case NODE_NUMBER:   return CALL(string_read_number);
+		case NODE_BOOLEAN:  return CALL(string_read_boolean);
+		case NODE_NIL:      return CALL(string_read_nil);
+		case NODE_CHAR:     return CALL(string_read_char);
+		case NODE_KEYWORD:  return CALL(string_read_keyword);
+		case NODE_STRING:   return CALL(string_read_string);
+		case NODE_MAP:      return CALL(string_read_map);
+		case NODE_LIST:     return CALL(string_read_list);
+		case NODE_VECTOR:   return CALL(string_read_vector);
+		case NODE_INSTANT:  return CALL(string_read_instant);
+		case NODE_SET:      return CALL(string_read_set);
+		case NODE_REGEXP:   return CALL(string_read_regexp);
 	}
 }
 
 static VALUE string_parse (VALUE self)
 {
 	size_t position = 0;
+	VALUE  source   = rb_iv_get(self, "@source");
 
-	return string_read_next(self, rb_string_value_cstr(rb_iv_get(self, "@source")), &position);
+	return string_read_next(self, StringValueCStr(source), &position);
 }
 
 #undef IS_EOF
 #undef IS_EOF_AFTER
 #undef CURRENT
+#undef CURRENT_PTR
 #undef AFTER
+#undef AFTER_PTR
+#undef BEFORE
+#undef BEFORE_PTR
 #undef SEEK
+#undef IS_IGNORED
+#undef IS_BOTH
+#undef IS_KEYWORD
+#undef IS_NOT_EOF_UP_TO
+#undef IS_EQUAL_UP_TO
+#undef IS_EQUAL
+#undef CALL
 #endif
