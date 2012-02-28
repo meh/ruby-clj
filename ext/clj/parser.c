@@ -15,6 +15,7 @@ VALUE cParser;
 
 #define _INSIDE_PARSER
 typedef enum {
+	NODE_METADATA,
 	NODE_NUMBER,
 	NODE_BOOLEAN,
 	NODE_NIL,
@@ -44,6 +45,10 @@ static VALUE t_init (int argc, VALUE* argv, VALUE self)
 	}
 	else if (argc > 2) {
 		rb_raise(rb_eArgError, "wrong number of arguments (%d for 2)", argc);
+	}
+
+	if (!rb_obj_is_kind_of(argv[0], rb_cString) && !rb_obj_is_kind_of(argv[0], rb_cIO)) {
+		rb_raise(rb_eArgError, "you have to pass a String or an IO");
 	}
 
 	source  = argv[0];
@@ -92,9 +97,6 @@ static VALUE t_parse (VALUE self)
 	}
 	else if (rb_obj_is_kind_of(source, rb_cIO)) {
 		return io_parse(self);
-	}
-	else {
-		rb_raise(rb_eArgError, "you have to pass a String or an IO");
 	}
 }
 

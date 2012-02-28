@@ -244,7 +244,13 @@ private
 	end
 
 	def read_instant (ch)
-		@source.read(3)
+		check = @source.read(3)
+
+		if check.length != 3
+			raise SyntaxError, 'unexpected EOF'
+		elsif check != 'nst'
+			raise SyntaxError, "expected inst, found i#{check}"
+		end
 
 		DateTime.rfc3339(read_string(ignore(false)))
 	end
