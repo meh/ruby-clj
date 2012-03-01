@@ -117,11 +117,11 @@ Init_parser_ext (void)
 
 	VALUE args[] = { Qnil };
 
-	args[0]       = rb_str_new2("u([0-9|a-f|A-F]{4})");
+	args[0]       = rb_str_new2("[0-9|a-f|A-F]{4}");
 	UNICODE_REGEX = rb_class_new_instance(1, args, rb_cRegexp);
 	rb_define_const(cClojure, "UNICODE_REGEX", UNICODE_REGEX);
 
-	args[0]     = rb_str_new2("o([0-3][0-7]?[0-7]?)");
+	args[0]     = rb_str_new2("[0-3]?[0-7]?[0-7]");
 	OCTAL_REGEX = rb_class_new_instance(1, args, rb_cRegexp);
 	rb_define_const(cClojure, "OCTAL_REGEX", OCTAL_REGEX);
 }

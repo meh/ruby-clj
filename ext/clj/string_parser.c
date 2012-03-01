@@ -221,12 +221,25 @@ static VALUE string_read_char (VALUE self, char* string, size_t* position)
 	else if (IS_NOT_EOF_UP_TO(6) && IS_EQUAL_UP_TO("return", 6) && (IS_EOF_AFTER(6) || IS_BOTH(AFTER(6)))) {
 		SEEK(6); return rb_str_new2("\r");
 	}
-	else if (CURRENT == 'u' && IS_NOT_EOF_UP_TO(5) && !NIL_P(rb_funcall(rb_str_new(CURRENT_PTR, 5), rb_intern("=~"), 1, UNICODE_REGEX)) && (IS_EOF_AFTER(5) || IS_BOTH(AFTER(5)))) {
-		return rb_funcall(rb_ary_new3(1, rb_funcall(rb_str_new(AFTER_PTR(1), 4), rb_intern("to_i"), 1, INT2FIX(16))),
+	else if (CURRENT == 'u' && IS_NOT_EOF_UP_TO(5) && !NIL_P(rb_funcall(rb_str_new(AFTER_PTR(1), 4), rb_intern("=~"), 1, UNICODE_REGEX)) && (IS_EOF_AFTER(5) || IS_BOTH(AFTER(5)))) {
+		SEEK(5); return rb_funcall(rb_ary_new3(1, rb_funcall(rb_str_new(BEFORE_PTR(4), 4), rb_intern("to_i"), 1, INT2FIX(16))),
 			rb_intern("pack"), 1, rb_str_new2("U"));
 	}
 	else if (CURRENT == 'o') {
+		size_t length = 1;
 
+		for (size_t i = 1; i < 5; i++) {
+			if (IS_EOF_AFTER(i) || IS_BOTH(AFTER(i))) {
+				break;
+			}
+
+			length++;
+		}
+
+		if (length > 1 && !NIL_P(rb_funcall(rb_str_new(AFTER_PTR(1), length - 1), rb_intern("=~"), 1, OCTAL_REGEX)) && (IS_EOF_AFTER(length) || IS_BOTH(AFTER(length)))) {
+			SEEK(length); return rb_funcall(rb_funcall(rb_str_new(BEFORE_PTR(length - 1), length - 1), rb_intern("to_i"), 1, INT2FIX(8)),
+				rb_intern("chr"), 0);
+		}
 	}
 
 	// TODO: add unicode and octal chars support

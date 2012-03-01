@@ -15,8 +15,8 @@ module Clojure
 class Parser
 	NUMBERS = '0' .. '9'
 
-	UNICODE_REGEX = /u([0-9|a-f|A-F]{4})/
-	OCTAL_REGEX   = /o([0-3][0-7]?[0-7]?)/
+	UNICODE_REGEX = /[0-9|a-f|A-F]{4}/
+	OCTAL_REGEX   = /[0-3]?[0-7]?[0-7]/
 
 	def initialize (source, options = {})
 		@source  = source.is_a?(String) ? StringIO.new(source) : source
@@ -163,10 +163,10 @@ private
 			@source.read(8) and "\f"
 		elsif (ahead = lookahead(7)) && ahead[0, 6] == 'return' && (!ahead[6] || both?(ahead[6]))
 			@source.read(6) and "\r"
-		elsif (ahead = lookahead(6)) && ahead[0] == 'u' && ahead[0, 5] =~ UNICODE_REGEX && (!ahead[5] || both?(ahead[5]))
+		elsif (ahead = lookahead(6)) && ahead[0] == 'u' && ahead[1, 5] =~ UNICODE_REGEX && (!ahead[5] || both?(ahead[5]))
 			[@source.read(5)[1, 4].to_i(16)].pack('U')
-		elsif (ahead = lookahead(5)) && ahead[0] == 'o' && matches = ahead[0, 4].match(OCTAL_REGEX)
-			length = matches[0].length
+		elsif (ahead = lookahead(5)) && ahead[0] == 'o' && matches = ahead[1, 3].match(OCTAL_REGEX)
+			length = matches[0].length + 1
 
 			if !ahead[length] || both?(ahead[length])
 				@source.read(length)[1, 3].to_i(8).chr
