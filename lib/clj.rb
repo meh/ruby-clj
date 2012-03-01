@@ -66,7 +66,6 @@ module Clojure
 				bytes
 			end
 		}
-
 	end
 end
 

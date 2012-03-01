@@ -9,6 +9,8 @@
  **/
 
 #ifdef _INSIDE_PARSER
+#define CALL(what) (what(self, string, position))
+#define STATE VALUE self, char* string, size_t* position
 #define IS_EOF (string[*position] == '\0')
 #define IS_EOF_AFTER(n) (string[*position + (n)] == '\0')
 #define CURRENT (string[*position])
@@ -24,7 +26,6 @@
 #define IS_NOT_EOF_UP_TO(n) (is_not_eof_up_to(string, position, n))
 #define IS_EQUAL_UP_TO(str, n) (strncmp(CURRENT_PTR, str, (n)) == 0)
 #define IS_EQUAL(str) IS_EQUAL_UP_TO(str, strlen(str))
-#define CALL(what) (what(self, string, position))
 
 static VALUE string_read_next (VALUE self, char* string, size_t* position);
 
@@ -39,14 +40,14 @@ static inline bool is_not_eof_up_to (char* string, size_t* position, size_t n)
 	return true;
 }
 
-static void string_ignore (VALUE self, char* string, size_t* position)
+static void string_ignore (STATE)
 {
 	while (!IS_EOF && IS_IGNORED(CURRENT)) {
 		SEEK(1);
 	}
 }
 
-static NodeType string_next_type (VALUE self, char* string, size_t* position)
+static NodeType string_next_type (STATE)
 {
 	if (isdigit(CURRENT) || CURRENT == '-' || CURRENT == '+') {
 		return NODE_NUMBER;
@@ -79,7 +80,7 @@ static NodeType string_next_type (VALUE self, char* string, size_t* position)
 	rb_raise(rb_eSyntaxError, "unknown type");
 }
 
-static VALUE string_read_metadata (VALUE self, char* string, size_t* position)
+static VALUE string_read_metadata (STATE)
 {
 	VALUE  result;
 	VALUE* metadatas = NULL;
@@ -111,7 +112,7 @@ static VALUE string_read_metadata (VALUE self, char* string, size_t* position)
 	return result;
 }
 
-static VALUE string_read_nil (VALUE self, char* string, size_t* position)
+static VALUE string_read_nil (STATE)
 {
 	if (!IS_NOT_EOF_UP_TO(3)) {
 		rb_raise(rb_eSyntaxError, "unexpected EOF");
@@ -126,7 +127,7 @@ static VALUE string_read_nil (VALUE self, char* string, size_t* position)
 	return Qnil;
 }
 
-static VALUE string_read_boolean (VALUE self, char* string, size_t* position)
+static VALUE string_read_boolean (STATE)
 {
 	if (CURRENT == 't') {
 		if (!IS_NOT_EOF_UP_TO(4)) {
@@ -156,7 +157,7 @@ static VALUE string_read_boolean (VALUE self, char* string, size_t* position)
 	}
 }
 
-static VALUE string_read_number (VALUE self, char* string, size_t* position)
+static VALUE string_read_number (STATE)
 {
 	size_t length = 0;
 	VALUE  rbPiece;
@@ -196,7 +197,7 @@ static VALUE string_read_number (VALUE self, char* string, size_t* position)
 	}
 }
 
-static VALUE string_read_char (VALUE self, char* string, size_t* position)
+static VALUE string_read_char (STATE)
 {
 	SEEK(1);
 
@@ -247,7 +248,7 @@ static VALUE string_read_char (VALUE self, char* string, size_t* position)
 	rb_raise(rb_eSyntaxError, "unknown character type");
 }
 
-static VALUE string_read_keyword (VALUE self, char* string, size_t* position)
+static VALUE string_read_keyword (STATE)
 {
 	size_t length = 0;
 
@@ -262,7 +263,7 @@ static VALUE string_read_keyword (VALUE self, char* string, size_t* position)
 	return rb_funcall(rb_str_new(BEFORE_PTR(length), length), rb_intern("to_sym"), 0);
 }
 
-static VALUE string_read_string (VALUE self, char* string, size_t* position)
+static VALUE string_read_string (STATE)
 {
 	size_t length = 0;
 
@@ -287,7 +288,7 @@ static VALUE string_read_string (VALUE self, char* string, size_t* position)
 	return rb_funcall(cClojure, rb_intern("unescape"), 1, rb_str_new(BEFORE_PTR(length + 1), length));
 }
 
-static VALUE string_read_regexp (VALUE self, char* string, size_t* position)
+static VALUE string_read_regexp (STATE)
 {
 	size_t length = 0;
 	VALUE  args[] = { Qnil };
@@ -313,7 +314,7 @@ static VALUE string_read_regexp (VALUE self, char* string, size_t* position)
 	return rb_class_new_instance(1, args, rb_cRegexp);
 }
 
-static VALUE string_read_instant (VALUE self, char* string, size_t* position)
+static VALUE string_read_instant (STATE)
 {
 	SEEK(1);
 
@@ -332,7 +333,7 @@ static VALUE string_read_instant (VALUE self, char* string, size_t* position)
 	return rb_funcall(rb_const_get(rb_cObject, rb_intern("DateTime")), rb_intern("rfc3339"), 1, CALL(string_read_string));
 }
 
-static VALUE string_read_list (VALUE self, char* string, size_t* position)
+static VALUE string_read_list (STATE)
 {
 	VALUE result = rb_class_new_instance(0, NULL, rb_iv_get(self, "@list_class"));
 
@@ -349,7 +350,7 @@ static VALUE string_read_list (VALUE self, char* string, size_t* position)
 	return result;
 }
 
-static VALUE string_read_vector (VALUE self, char* string, size_t* position)
+static VALUE string_read_vector (STATE)
 {
 	VALUE result = rb_class_new_instance(0, NULL, rb_iv_get(self, "@vector_class"));
 
@@ -366,7 +367,7 @@ static VALUE string_read_vector (VALUE self, char* string, size_t* position)
 	return result;
 }
 
-static VALUE string_read_set (VALUE self, char* string, size_t* position)
+static VALUE string_read_set (STATE)
 {
 	VALUE result = rb_class_new_instance(0, NULL, rb_iv_get(self, "@set_class"));
 
@@ -387,7 +388,7 @@ static VALUE string_read_set (VALUE self, char* string, size_t* position)
 	return result;
 }
 
-static VALUE string_read_map (VALUE self, char* string, size_t* position)
+static VALUE string_read_map (STATE)
 {
 	VALUE result = rb_class_new_instance(0, NULL, rb_iv_get(self, "@map_class"));
 	VALUE key;
@@ -408,7 +409,7 @@ static VALUE string_read_map (VALUE self, char* string, size_t* position)
 	return result;
 }
 
-static VALUE string_read_next (VALUE self, char* string, size_t* position)
+static VALUE string_read_next (STATE)
 {
 	CALL(string_ignore);
 
@@ -441,6 +442,8 @@ static VALUE string_parse (VALUE self)
 	return string_read_next(self, StringValueCStr(source), &position);
 }
 
+#undef CALL
+#undef STATE
 #undef IS_EOF
 #undef IS_EOF_AFTER
 #undef CURRENT
@@ -456,5 +459,4 @@ static VALUE string_parse (VALUE self)
 #undef IS_NOT_EOF_UP_TO
 #undef IS_EQUAL_UP_TO
 #undef IS_EQUAL
-#undef CALL
 #endif
