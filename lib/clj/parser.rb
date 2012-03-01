@@ -15,29 +15,8 @@ module Clojure
 class Parser
 	NUMBERS = '0' .. '9'
 
-	STRING_REGEX  = %r((?:\\[\\bfnrt"/]|(?:\\u(?:[A-Fa-f\d]{4}))+|\\[\x20-\xff]))n
 	UNICODE_REGEX = /u([0-9|a-f|A-F]{4})/
 	OCTAL_REGEX   = /o([0-3][0-7]?[0-7]?)/
-
-	# Unescape characters in strings.
-	UNESCAPE_MAP = Hash.new { |h, k| h[k] = k.chr }
-	UNESCAPE_MAP.merge!(
-		?"  => '"',
-		?\\ => '\\',
-		?/  => '/',
-		?b  => "\b",
-		?f  => "\f",
-		?n  => "\n",
-		?r  => "\r",
-		?t  => "\t",
-		?u  => nil
-	)
-
-	EMPTY_8BIT_STRING = ''
-
-	if EMPTY_8BIT_STRING.respond_to? :force_encoding
-		EMPTY_8BIT_STRING.force_encoding Encoding::ASCII_8BIT
-	end
 
 	def initialize (source, options = {})
 		@source  = source.is_a?(String) ? StringIO.new(source) : source
@@ -184,13 +163,15 @@ private
 			@source.read(8) and "\f"
 		elsif (ahead = lookahead(7)) && ahead[0, 6] == 'return' && (!ahead[6] || both?(ahead[6]))
 			@source.read(6) and "\r"
-		elsif (ahead = lookahead(6)) && ahead[0, 5] =~ UNICODE_REGEX && (!ahead[5] || both?(ahead[5]))
+		elsif (ahead = lookahead(6)) && ahead[0] == 'u' && ahead[0, 5] =~ UNICODE_REGEX && (!ahead[5] || both?(ahead[5]))
 			[@source.read(5)[1, 4].to_i(16)].pack('U')
-		elsif (ahead = lookahead(5)) && ahead[0, 4] =~ OCTAL_REGEX && (!ahead[4] || both?(ahead[4]))
-			@source.read(4)[1, 3].to_i(8).chr
-		else
-			raise SyntaxError, 'unknown character type'
-		end
+		elsif (ahead = lookahead(5)) && ahead[0] == 'o' && matches = ahead[0, 4].match(OCTAL_REGEX)
+			length = matches[0].length
+
+			if !ahead[length] || both?(ahead[length])
+				@source.read(length)[1, 3].to_i(8).chr
+			end
+		end or raise SyntaxError, 'unknown character type'
 	end
 
 	def read_keyword (ch)
@@ -218,27 +199,7 @@ private
 			end
 		end
 
-		result.gsub(STRING_REGEX) {|escape|
-			if u = UNESCAPE_MAP[$&[1]]
-				next u
-			end
-
-			bytes = EMPTY_8BIT_STRING.dup
-
-			i = 0
-			while escape[6 * i] == ?\\ && escape[6 * i + 1] == ?u
-				bytes << escape[6 * i + 2, 2].to_i(16) << escape[6 * i + 4, 2].to_i(16)
-
-				i += 1
-			end
-
-			if bytes.respond_to? :force_encoding
-				bytes.force_encoding 'UTF-16be'
-				bytes.encode 'UTF-8'
-			else
-				bytes
-			end
-		}
+		Clojure.unescape(result)
 	end
 
 	def read_instant (ch)

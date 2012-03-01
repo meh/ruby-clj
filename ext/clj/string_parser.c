@@ -90,10 +90,10 @@ static VALUE string_read_metadata (VALUE self, char* string, size_t* position)
 
 		SEEK(1);
 
-		metadatas[length - 1] = string_read_next(self, string, position);
+		metadatas[length - 1] = CALL(string_read_next);
 	}
 
-	result = string_read_next(self, string, position);
+	result = CALL(string_read_next);
 
 	if (!rb_respond_to(result, rb_intern("metadata="))) {
 		free(metadatas);
@@ -101,6 +101,7 @@ static VALUE string_read_metadata (VALUE self, char* string, size_t* position)
 		rb_raise(rb_eSyntaxError, "the object cannot hold metadata");
 	}
 
+	// FIXME: this could lead to a memleak if #metadata= raises
 	for (size_t i = 0; i < length; i++) {
 		rb_funcall(result, rb_intern("metadata="), 1, metadatas[i]);
 	}
@@ -175,7 +176,7 @@ static VALUE string_read_number (VALUE self, char* string, size_t* position)
 		return rb_funcall(rb_cObject, rb_intern("Rational"), 1, rbPiece);
 	}
 	else if ((tmp = strchr(cPiece, 'r')) || (tmp = strchr(cPiece, 'R'))) {
-		return rb_funcall(rb_str_new_cstr(tmp + 1), rb_intern("to_i"), 1,
+		return rb_funcall(rb_str_new2(tmp + 1), rb_intern("to_i"), 1,
 			rb_funcall(rb_str_new(cPiece, tmp - cPiece), rb_intern("to_i"), 0));
 	}
 	else if (strchr(cPiece, '.') || strchr(cPiece, 'e') || strchr(cPiece, 'E') || cPiece[length - 1] == 'M') {
@@ -203,22 +204,29 @@ static VALUE string_read_char (VALUE self, char* string, size_t* position)
 		SEEK(1); return rb_str_new(BEFORE_PTR(1), 1);
 	}
 	else if (IS_NOT_EOF_UP_TO(7) && IS_EQUAL_UP_TO("newline", 7) && (IS_EOF_AFTER(7) || IS_BOTH(AFTER(7)))) {
-		SEEK(7); return rb_str_new_cstr("\n");
+		SEEK(7); return rb_str_new2("\n");
 	}
 	else if (IS_NOT_EOF_UP_TO(5) && IS_EQUAL_UP_TO("space", 5) && (IS_EOF_AFTER(5) || IS_BOTH(AFTER(5)))) {
-		SEEK(5); return rb_str_new_cstr(" ");
+		SEEK(5); return rb_str_new2(" ");
 	}
 	else if (IS_NOT_EOF_UP_TO(3) && IS_EQUAL_UP_TO("tab", 3) && (IS_EOF_AFTER(3) || IS_BOTH(AFTER(3)))) {
-		SEEK(3); return rb_str_new_cstr("\t");
+		SEEK(3); return rb_str_new2("\t");
 	}
 	else if (IS_NOT_EOF_UP_TO(9) && IS_EQUAL_UP_TO("backspace", 9) && (IS_EOF_AFTER(9) || IS_BOTH(AFTER(9)))) {
-		SEEK(9); return rb_str_new_cstr("\b");
+		SEEK(9); return rb_str_new2("\b");
 	}
 	else if (IS_NOT_EOF_UP_TO(8) && IS_EQUAL_UP_TO("formfeed", 8) && (IS_EOF_AFTER(8) || IS_BOTH(AFTER(8)))) {
-		SEEK(8); return rb_str_new_cstr("\f");
+		SEEK(8); return rb_str_new2("\f");
 	}
 	else if (IS_NOT_EOF_UP_TO(6) && IS_EQUAL_UP_TO("return", 6) && (IS_EOF_AFTER(6) || IS_BOTH(AFTER(6)))) {
-		SEEK(6); return rb_str_new_cstr("\r");
+		SEEK(6); return rb_str_new2("\r");
+	}
+	else if (CURRENT == 'u' && IS_NOT_EOF_UP_TO(5) && !NIL_P(rb_funcall(rb_str_new(CURRENT_PTR, 5), rb_intern("=~"), 1, UNICODE_REGEX)) && (IS_EOF_AFTER(5) || IS_BOTH(AFTER(5)))) {
+		return rb_funcall(rb_ary_new3(1, rb_funcall(rb_str_new(AFTER_PTR(1), 4), rb_intern("to_i"), 1, INT2FIX(16))),
+			rb_intern("pack"), 1, rb_str_new2("U"));
+	}
+	else if (CURRENT == 'o') {
+
 	}
 
 	// TODO: add unicode and octal chars support
@@ -263,7 +271,7 @@ static VALUE string_read_string (VALUE self, char* string, size_t* position)
 
 	// TODO: make the escapes work properly
 
-	return rb_str_new(BEFORE_PTR(length + 1), length);
+	return rb_funcall(cClojure, rb_intern("unescape"), 1, rb_str_new(BEFORE_PTR(length + 1), length));
 }
 
 static VALUE string_read_regexp (VALUE self, char* string, size_t* position)

@@ -110,6 +110,9 @@ describe Clojure do
 			Clojure.parse('\formfeed').should  == "\f"
 			Clojure.parse('\return').should    == "\r"
 
+			Clojure.parse('\o54').should == ','
+			Clojure.parse('[\o3 "lol"]').should == ["\x03", "lol"]
+
 			unless RUBY_VERSION.include? '1.8'
 				Clojure.parse('\u4343').should == "\u4343"
 			end
