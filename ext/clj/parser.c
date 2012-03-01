@@ -53,7 +53,7 @@ typedef enum {
 #define IS_BOTH(ch) (ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == '\n' || ch == '\r' || ch == '\t')
 #define IS_KEYWORD(ch) (ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == '\'' || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == '\n' || ch == '\r' || ch == '\t')
 
-static VALUE read_next (VALUE self, char* string, size_t* position);
+static VALUE read_next (STATE);
 
 static inline bool is_not_eof_up_to (char* string, size_t* position, size_t n)
 {
@@ -269,8 +269,6 @@ static VALUE read_char (STATE)
 		}
 	}
 
-	// TODO: add unicode and octal chars support
-
 	rb_raise(rb_eSyntaxError, "unknown character type");
 }
 
@@ -308,8 +306,6 @@ static VALUE read_string (STATE)
 	}
 
 	SEEK(length + 1);
-
-	// TODO: make the escapes work properly
 
 	return rb_funcall(cClojure, rb_intern("unescape"), 1, rb_str_new(BEFORE_PTR(length + 1), length));
 }
