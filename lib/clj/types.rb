@@ -97,11 +97,7 @@ end
 
 class String
 	def to_clj (options = {})
-		result = if respond_to? :encode
-			encode('UTF-16be').inspect
-		else
-			inspect
-		end
+		result = (encode('UTF-16be') rescue self).inspect
 		
 		result.gsub!(/(^|[^\\])\\e/, '\1\u001b')
 		result.gsub!(/(^|[^\\])\\a/, '\1\u0003')

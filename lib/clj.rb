@@ -71,8 +71,10 @@ end
 
 require 'clj/types'
 
-if RUBY_ENGINE == 'ruby' || RUBY_ENGINE == 'rbx'
+begin
+	raise LoadError if RUBY_ENGINE == 'jruby'
+
 	require 'clj/parser_ext'
-else
+rescue LoadError
 	require 'clj/parser'
 end

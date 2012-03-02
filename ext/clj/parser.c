@@ -57,7 +57,9 @@ static VALUE read_next (STATE);
 
 static inline bool is_not_eof_up_to (char* string, size_t* position, size_t n)
 {
-	for (size_t i = 0; i < n; i++) {
+	size_t i;
+
+	for (i = 0; i < n; i++) {
 		if (IS_EOF_AFTER(i)) {
 			return false;
 		}
@@ -111,6 +113,7 @@ static VALUE read_metadata (STATE)
 	VALUE  result;
 	VALUE* metadatas = NULL;
 	size_t length    = 0;
+	size_t i;
 
 	while (CURRENT == '^') {
 		metadatas = realloc(metadatas, ++length * sizeof(VALUE));
@@ -129,7 +132,7 @@ static VALUE read_metadata (STATE)
 	}
 
 	// FIXME: this could lead to a memleak if #metadata= raises
-	for (size_t i = 0; i < length; i++) {
+	for (i = 0; i < length; i++) {
 		rb_funcall(result, rb_intern("metadata="), 1, metadatas[i]);
 	}
 
@@ -254,8 +257,9 @@ static VALUE read_char (STATE)
 	}
 	else if (CURRENT == 'o') {
 		size_t length = 1;
+		size_t i;
 
-		for (size_t i = 1; i < 5; i++) {
+		for (i = 1; i < 5; i++) {
 			if (IS_EOF_AFTER(i) || IS_BOTH(AFTER(i))) {
 				break;
 			}

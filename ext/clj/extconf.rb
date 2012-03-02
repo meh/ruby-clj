@@ -5,7 +5,7 @@ unless $CFLAGS.gsub!(/ -O[\dsz]?/, ' -O3')
 end
 
 if CONFIG['CC'] =~ /gcc/
-	$CFLAGS << ' -Wall' << ' -std=c99'
+	$CFLAGS << ' -Wall'
 
 	if $DEBUG && !$CFLAGS.gsub!(/ -O[\dsz]?/, ' -O0 -ggdb')
 		$CFLAGS << ' -O0 -ggdb'
