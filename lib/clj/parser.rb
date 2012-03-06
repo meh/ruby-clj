@@ -13,7 +13,8 @@ require 'stringio'
 module Clojure
 
 class Parser
-	NUMBERS = '0' .. '9'
+	NUMBERS  = '0' .. '9'
+	SYMBOL   = ('0' .. '9').to_a | ('a' .. 'z').to_a | ('A' .. 'Z').to_a | %w[+ ! - _ ? . : /]
 
 	UNICODE_REGEX = /[0-9|a-f|A-F]{4}/
 	OCTAL_REGEX   = /[0-3]?[0-7]?[0-7]/
@@ -29,7 +30,15 @@ class Parser
 	end
 
 	def parse
-		read_next
+		result = read_next
+
+		ignore(false)
+
+		if @source.read(1)
+			raise SyntaxError, 'there is some unconsumed input'
+		end
+
+		result
 	end
 
 private
@@ -51,7 +60,8 @@ private
 			when '{' then :set
 			when '"' then :regexp
 			end
-		end or raise SyntaxError, 'unknown type'
+		else :symbol
+		end
 	end
 
 	def read_next
@@ -83,45 +93,39 @@ private
 	end
 
 	def read_nil (ch)
-		check = @source.read(2)
+		check = @source.read(3)
 
-		if check.length != 2
-			raise SyntaxError, 'unexpected EOF'
-		elsif check != 'il'
-			raise SyntaxError, "expected nil, found n#{check}"
+		if check[0, 2] != 'il' || !both_separator?(check[2])
+			revert(check.length) and read_symbol(ch)
+		else
+			nil
 		end
-
-		nil
 	end
 
 	def read_boolean (ch)
 		if ch == 't'
-			check = @source.read(3)
-
-			if check.length != 3
-				raise SyntaxError, 'unexpected EOF'
-			elsif check != 'rue'
-				raise SyntaxError, "expected true, found t#{check}"
-			end
-
-			true
-		else
 			check = @source.read(4)
 
-			if check.length != 4
-				raise SyntaxError, 'unexpected EOF'
-			elsif check != 'alse'
-				raise SyntaxError, "expected false, found f#{check}"
+			if check[0, 3] != 'rue' || !both_separator?(check[3])
+				revert(check.length) and read_symbol(ch)
+			else
+				true
 			end
+		else
+			check = @source.read(5)
 
-			false
+			if check[0, 4] != 'alse' || !both_separator?(check[4])
+				revert(check.length) and read_symbol(ch)
+			else
+				false
+			end
 		end
 	end
 
 	def read_number (ch)
 		piece = ch
 
-		while (ch = @source.read(1)) && !both?(ch)
+		while (ch = @source.read(1)) && !both_separator?(ch)
 			piece << ch
 		end
 
@@ -149,41 +153,57 @@ private
 	end
 
 	def read_char (ch)
-		if (ahead = lookahead(2)) && (!ahead[1] || both?(ahead[1]))
+		if (ahead = lookahead(2)) && both_separator?(ahead[1])
 			@source.read(1)
-		elsif (ahead = lookahead(8)) && ahead[0, 7] == 'newline' && (!ahead[7] || both?(ahead[7]))
+		elsif (ahead = lookahead(8)) && ahead[0, 7] == 'newline' && both_separator?(ahead[7])
 			@source.read(7) and "\n"
-		elsif (ahead = lookahead(6)) && ahead[0, 5] == 'space' && (!ahead[5] || both?(ahead[5]))
+		elsif (ahead = lookahead(6)) && ahead[0, 5] == 'space' && both_separator?(ahead[5])
 			@source.read(5) and ' '
-		elsif (ahead = lookahead(4)) && ahead[0, 3] == 'tab' && (!ahead[3] || both?(ahead[3]))
+		elsif (ahead = lookahead(4)) && ahead[0, 3] == 'tab' && both_separator?(ahead[3])
 			@source.read(3) and "\t"
-		elsif (ahead = lookahead(10)) && ahead[0, 9] == 'backspace' && (!ahead[9] || both?(ahead[9]))
+		elsif (ahead = lookahead(10)) && ahead[0, 9] == 'backspace' && both_separator?(ahead[9])
 			@source.read(9) and "\b"
-		elsif (ahead = lookahead(9)) && ahead[0, 8] == 'formfeed' && (!ahead[8] || both?(ahead[8]))
+		elsif (ahead = lookahead(9)) && ahead[0, 8] == 'formfeed' && both_separator?(ahead[8])
 			@source.read(8) and "\f"
-		elsif (ahead = lookahead(7)) && ahead[0, 6] == 'return' && (!ahead[6] || both?(ahead[6]))
+		elsif (ahead = lookahead(7)) && ahead[0, 6] == 'return' && both_separator?(ahead[6])
 			@source.read(6) and "\r"
-		elsif (ahead = lookahead(6)) && ahead[0] == 'u' && ahead[1, 5] =~ UNICODE_REGEX && (!ahead[5] || both?(ahead[5]))
+		elsif (ahead = lookahead(6)) && ahead[0] == 'u' && ahead[1, 5] =~ UNICODE_REGEX && both_separator?(ahead[5])
 			[@source.read(5)[1, 4].to_i(16)].pack('U')
 		elsif (ahead = lookahead(5)) && ahead[0] == 'o' && matches = ahead[1, 3].match(OCTAL_REGEX)
 			length = matches[0].length + 1
 
-			if !ahead[length] || both?(ahead[length])
+			if both_separator?(ahead[length])
 				@source.read(length)[1, 3].to_i(8).chr
 			end
 		end or raise SyntaxError, 'unknown character type'
 	end
 
-	def read_keyword (ch)
-		result = ''
+	def read_symbol (ch)
+		result = ch
 
-		while (ch = @source.read(1)) && !keyword?(ch)
+		while (ch = @source.read(1)) && is_symbol?(ch)
 			result << ch
 		end
 
 		revert if ch
 
-		result.to_sym
+		if result.include? '::'
+			raise SyntaxError, 'symbols cannot have repeating :'
+		end
+
+		result.to_sym.symbol!
+	end
+
+	def read_keyword (ch)
+		result = ''
+
+		while (ch = @source.read(1)) && !keyword_separator?(ch)
+			result << ch
+		end
+
+		revert if ch
+
+		result.to_sym.keyword!
 	end
 
 	def read_string (ch)
@@ -321,12 +341,16 @@ private
 		ch == ' ' || ch == ',' || ch == "\n" || ch == "\r" || ch == "\t"
 	end
 
-	def both? (ch)
-		ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == "\n" || ch == "\r" || ch == "\t"
+	def is_symbol? (ch)
+		SYMBOL.include?(ch)
 	end
 
-	def keyword? (ch)
-		ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == "'" || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == "\n" || ch == "\r" || ch == "\t"
+	def both_separator? (ch)
+		ch == nil || ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == "\n" || ch == "\r" || ch == "\t"
+	end
+
+	def keyword_separator? (ch)
+		ch == nil || ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == "'" || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == "\n" || ch == "\r" || ch == "\t"
 	end
 end
 

@@ -8,6 +8,8 @@
 #  0. You just DO WHAT THE FUCK YOU WANT TO.
 #++
 
+require 'forwardable'
+
 module Clojure
 	module Metadata
 		def metadata
@@ -73,6 +75,35 @@ module Clojure
 			metadata_to_clj(options) + '#{' + uniq.map { |o| o.to_clj(options) }.join(' ') + '}'
 		end
 	end
+
+	class Symbol
+		def initialize (sym)
+			@internal = sym
+		end
+
+		def keyword?; false; end
+		def symbol?;  true;  end
+
+		def to_clj (*)
+			result = to_sym.to_s
+
+			unless result =~ %r([\w:+!-_?./][\w\d:+!-_?./]*)
+				raise ArgumentError, "#{result} cannot be transformed into clojure"
+			end
+
+			result
+		end
+
+		def == (other)
+			return false unless other.is_a?(Symbol)
+
+			to_sym == other.to_sym
+		end
+
+		def to_sym;  @internal;    end
+		def to_s;    to_sym.to_s;  end
+		def inspect; to_s          end
+	end
 end
 
 [Numeric, TrueClass, FalseClass, NilClass].each {|klass|
@@ -84,8 +115,19 @@ end
 }
 
 class Symbol
-	def to_clj (options = {})
-		result = inspect
+	def keyword!
+		self
+	end
+
+	def symbol!
+		Clojure::Symbol.new(self)
+	end
+
+	def keyword?; true;  end
+	def symbol?;  false; end
+
+	def to_clj (*)
+		result = to_sym.inspect
 
 		unless result =~ /:([^(\[{'^@`~\"\\,\s;)\]}]+)/
 			raise ArgumentError, "#{result} cannot be transformed into clojure"
@@ -96,7 +138,7 @@ class Symbol
 end
 
 class String
-	def to_clj (options = {})
+	def to_clj (*)
 		result = (encode('UTF-16be') rescue self).inspect
 		
 		result.gsub!(/(^|[^\\])\\e/, '\1\u001b')
@@ -107,13 +149,13 @@ class String
 end
 
 class Rational
-	def to_clj (options = {})
+	def to_clj (*)
 		to_s
 	end
 end
 
 class Regexp
-	def to_clj (options = {})
+	def to_clj (*)
 		'#"' + inspect[1 .. -2] + '"'
 	end
 end
@@ -137,13 +179,13 @@ class Time
 end
 
 class Bignum < Integer
-	def to_clj (options = {})
+	def to_clj (*)
 		to_s + 'N'
 	end
 end
 
 class BigDecimal < Numeric
-	def to_clj (options = {})
+	def to_clj (*)
 		to_s('F') + 'M'
 	end
 end

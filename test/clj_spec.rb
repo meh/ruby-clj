@@ -25,6 +25,10 @@ describe Clojure do
 		end
 
 		it 'dumps correctly symbols' do
+			Clojure.dump(:wat.symbol!).should == 'wat'
+		end
+
+		it 'dumps correctly keywords' do
 			Clojure.dump(:wat).should == ':wat'
 
 			expect {
@@ -83,19 +87,19 @@ describe Clojure do
 		it 'parses correctly true' do
 			Clojure.parse('true').should == true
 			
-			expect { Clojure.parse('truf') }.should raise_error
+			Clojure.parse('truf').should == :truf.symbol!
 		end
 
 		it 'parses correctly false' do
 			Clojure.parse('false').should == false
 
-			expect { Clojure.parse('falfe') }.should raise_error
+		  Clojure.parse('falfe').should == :falfe.symbol!
 		end
 
 		it 'parses correctly nil' do
 			Clojure.parse('nil').should == nil
 
-			expect { Clojure.parse('nol') }.should raise_error
+			Clojure.parse('nol').should == :nol.symbol!
 		end
 
 		it 'parses correctly chars' do
@@ -125,6 +129,11 @@ describe Clojure do
 			unless RUBY_VERSION.include? '1.8'
 				Clojure.parse('"\u4343"').should   == "\u4343"
 			end
+		end
+
+		it 'parses correctly symbols' do
+			Clojure.parse('ni').should == :ni.symbol!
+			Clojure.parse('ni').should == :ni.symbol!
 		end
 
 		it 'parses correctly keywords' do

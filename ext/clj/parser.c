@@ -32,7 +32,8 @@ typedef enum {
 	NODE_VECTOR,
 	NODE_INSTANT,
 	NODE_SET,
-	NODE_REGEXP
+	NODE_REGEXP,
+	NODE_SYMBOL
 } NodeType;
 
 #define CALL(what) (what(self, string, position))
@@ -50,8 +51,9 @@ typedef enum {
 #define IS_EQUAL_UP_TO(str, n) (strncmp(CURRENT_PTR, str, (n)) == 0)
 #define IS_EQUAL(str) IS_EQUAL_UP_TO(str, strlen(str))
 #define IS_IGNORED(ch) (isspace(ch) || ch == ',')
-#define IS_BOTH(ch) (ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == '\n' || ch == '\r' || ch == '\t')
-#define IS_KEYWORD(ch) (ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == '\'' || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == '\n' || ch == '\r' || ch == '\t')
+#define IS_SYMBOL(ch) (isdigit(ch) || isalpha(ch) || ch == '+' || ch == '!' || ch == '-' || ch == '_' || ch == '?' || ch == '.' || ch == ':' || ch == '/')
+#define IS_BOTH_SEPARATOR(ch) (ch == '\0' || ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == '\n' || ch == '\r' || ch == '\t')
+#define IS_KEYWORD_SEPARATOR(ch) (ch == '\0' || ch == ' ' || ch == ',' || ch == '"' || ch == '{' || ch == '}' || ch == '(' || ch == ')' || ch == '[' || ch == ']' || ch == '#' || ch == ':' || ch == '\'' || ch == '^' || ch == '@' || ch == '`' || ch == '~' || ch == '\\' || ch == ';' || ch == '\n' || ch == '\r' || ch == '\t')
 
 static VALUE read_next (STATE);
 
@@ -105,7 +107,7 @@ static NodeType next_type (STATE)
 		}
 	}
 
-	rb_raise(rb_eSyntaxError, "unknown type");
+	return NODE_SYMBOL;
 }
 
 static VALUE read_metadata (STATE)
@@ -141,14 +143,24 @@ static VALUE read_metadata (STATE)
 	return result;
 }
 
-static VALUE read_nil (STATE)
+static VALUE read_symbol (STATE)
 {
-	if (!IS_NOT_EOF_UP_TO(3)) {
-		rb_raise(rb_eSyntaxError, "unexpected EOF");
+	size_t length = 0;
+
+	while (IS_SYMBOL(AFTER(length))) {
+		length++;
 	}
 
-	if (!IS_EQUAL_UP_TO("nil", 3)) {
-		rb_raise(rb_eSyntaxError, "expected nil, got n%c%c", AFTER(1), AFTER(2));
+	SEEK(length);
+
+	return rb_funcall(rb_funcall(rb_str_new(BEFORE_PTR(length), length), rb_intern("to_sym"), 0),
+		rb_intern("symbol!"), 0);
+}
+
+static VALUE read_nil (STATE)
+{
+	if (!IS_NOT_EOF_UP_TO(3) || !IS_EQUAL_UP_TO("nil", 3) || !IS_BOTH_SEPARATOR(AFTER(3))) {
+		return CALL(read_symbol);
 	}
 
 	SEEK(3);
@@ -159,25 +171,17 @@ static VALUE read_nil (STATE)
 static VALUE read_boolean (STATE)
 {
 	if (CURRENT == 't') {
-		if (!IS_NOT_EOF_UP_TO(4)) {
-			rb_raise(rb_eSyntaxError, "unexpected EOF");
+		if (!IS_NOT_EOF_UP_TO(4) || !IS_EQUAL_UP_TO("true", 4) || !IS_BOTH_SEPARATOR(AFTER(4))) {
+			return CALL(read_symbol);
 		}
-
-		if (!IS_EQUAL_UP_TO("true", 4)) {
-			rb_raise(rb_eSyntaxError, "expected true, got t%c%c%c", AFTER(1), AFTER(2), AFTER(3));
-		}
-
+		
 		SEEK(4);
 
 		return Qtrue;
 	}
 	else {
-		if (!IS_NOT_EOF_UP_TO(5)) {
-			rb_raise(rb_eSyntaxError, "unexpected EOF");
-		}
-
-		if (!IS_EQUAL_UP_TO("false", 5)) {
-			rb_raise(rb_eSyntaxError, "expected false, got f%c%c%c%c", AFTER(1), AFTER(2), AFTER(3), AFTER(4));
+		if (!IS_NOT_EOF_UP_TO(5) || !IS_EQUAL_UP_TO("false", 5) || !IS_BOTH_SEPARATOR(AFTER(5))) {
+			return CALL(read_symbol);
 		}
 
 		SEEK(5);
@@ -193,7 +197,7 @@ static VALUE read_number (STATE)
 	char*  cPiece;
 	char*  tmp;
 
-	while (!IS_EOF_AFTER(length) && !IS_BOTH(AFTER(length))) {
+	while (!IS_EOF_AFTER(length) && !IS_BOTH_SEPARATOR(AFTER(length))) {
 		length++;
 	}
 
@@ -230,28 +234,28 @@ static VALUE read_char (STATE)
 {
 	SEEK(1);
 
-	if (IS_EOF_AFTER(1) || IS_BOTH(AFTER(1))) {
+	if (IS_EOF_AFTER(1) || IS_BOTH_SEPARATOR(AFTER(1))) {
 		SEEK(1); return rb_str_new(BEFORE_PTR(1), 1);
 	}
-	else if (IS_NOT_EOF_UP_TO(7) && IS_EQUAL_UP_TO("newline", 7) && (IS_EOF_AFTER(7) || IS_BOTH(AFTER(7)))) {
+	else if (IS_NOT_EOF_UP_TO(7) && IS_EQUAL_UP_TO("newline", 7) && IS_BOTH_SEPARATOR(AFTER(7))) {
 		SEEK(7); return rb_str_new2("\n");
 	}
-	else if (IS_NOT_EOF_UP_TO(5) && IS_EQUAL_UP_TO("space", 5) && (IS_EOF_AFTER(5) || IS_BOTH(AFTER(5)))) {
+	else if (IS_NOT_EOF_UP_TO(5) && IS_EQUAL_UP_TO("space", 5) && IS_BOTH_SEPARATOR(AFTER(5))) {
 		SEEK(5); return rb_str_new2(" ");
 	}
-	else if (IS_NOT_EOF_UP_TO(3) && IS_EQUAL_UP_TO("tab", 3) && (IS_EOF_AFTER(3) || IS_BOTH(AFTER(3)))) {
+	else if (IS_NOT_EOF_UP_TO(3) && IS_EQUAL_UP_TO("tab", 3) && IS_BOTH_SEPARATOR(AFTER(3))) {
 		SEEK(3); return rb_str_new2("\t");
 	}
-	else if (IS_NOT_EOF_UP_TO(9) && IS_EQUAL_UP_TO("backspace", 9) && (IS_EOF_AFTER(9) || IS_BOTH(AFTER(9)))) {
+	else if (IS_NOT_EOF_UP_TO(9) && IS_EQUAL_UP_TO("backspace", 9) && IS_BOTH_SEPARATOR(AFTER(9))) {
 		SEEK(9); return rb_str_new2("\b");
 	}
-	else if (IS_NOT_EOF_UP_TO(8) && IS_EQUAL_UP_TO("formfeed", 8) && (IS_EOF_AFTER(8) || IS_BOTH(AFTER(8)))) {
+	else if (IS_NOT_EOF_UP_TO(8) && IS_EQUAL_UP_TO("formfeed", 8) && IS_BOTH_SEPARATOR(AFTER(8))) {
 		SEEK(8); return rb_str_new2("\f");
 	}
-	else if (IS_NOT_EOF_UP_TO(6) && IS_EQUAL_UP_TO("return", 6) && (IS_EOF_AFTER(6) || IS_BOTH(AFTER(6)))) {
+	else if (IS_NOT_EOF_UP_TO(6) && IS_EQUAL_UP_TO("return", 6) && IS_BOTH_SEPARATOR(AFTER(6))) {
 		SEEK(6); return rb_str_new2("\r");
 	}
-	else if (CURRENT == 'u' && IS_NOT_EOF_UP_TO(5) && !NIL_P(rb_funcall(rb_str_new(AFTER_PTR(1), 4), rb_intern("=~"), 1, UNICODE_REGEX)) && (IS_EOF_AFTER(5) || IS_BOTH(AFTER(5)))) {
+	else if (CURRENT == 'u' && IS_NOT_EOF_UP_TO(5) && !NIL_P(rb_funcall(rb_str_new(AFTER_PTR(1), 4), rb_intern("=~"), 1, UNICODE_REGEX)) && IS_BOTH_SEPARATOR(AFTER(5))) {
 		SEEK(5); return rb_funcall(rb_ary_new3(1, rb_funcall(rb_str_new(BEFORE_PTR(4), 4), rb_intern("to_i"), 1, INT2FIX(16))),
 			rb_intern("pack"), 1, rb_str_new2("U"));
 	}
@@ -260,14 +264,14 @@ static VALUE read_char (STATE)
 		size_t i;
 
 		for (i = 1; i < 5; i++) {
-			if (IS_EOF_AFTER(i) || IS_BOTH(AFTER(i))) {
+			if (IS_BOTH_SEPARATOR(AFTER(i))) {
 				break;
 			}
 
 			length++;
 		}
 
-		if (length > 1 && !NIL_P(rb_funcall(rb_str_new(AFTER_PTR(1), length - 1), rb_intern("=~"), 1, OCTAL_REGEX)) && (IS_EOF_AFTER(length) || IS_BOTH(AFTER(length)))) {
+		if (length > 1 && !NIL_P(rb_funcall(rb_str_new(AFTER_PTR(1), length - 1), rb_intern("=~"), 1, OCTAL_REGEX)) && IS_BOTH_SEPARATOR(AFTER(length))) {
 			SEEK(length); return rb_funcall(rb_funcall(rb_str_new(BEFORE_PTR(length - 1), length - 1), rb_intern("to_i"), 1, INT2FIX(8)),
 				rb_intern("chr"), 0);
 		}
@@ -282,13 +286,14 @@ static VALUE read_keyword (STATE)
 
 	SEEK(1);
 
-	while (!IS_EOF_AFTER(length) && !IS_KEYWORD(AFTER(length))) {
+	while (!IS_KEYWORD_SEPARATOR(AFTER(length))) {
 		length++;
 	}
 
 	SEEK(length);
 
-	return rb_funcall(rb_str_new(BEFORE_PTR(length), length), rb_intern("to_sym"), 0);
+	return rb_funcall(rb_funcall(rb_str_new(BEFORE_PTR(length), length), rb_intern("to_sym"), 0),
+		rb_intern("keyword!"), 0);
 }
 
 static VALUE read_string (STATE)
@@ -457,6 +462,7 @@ static VALUE read_next (STATE)
 		case NODE_INSTANT:  return CALL(read_instant);
 		case NODE_SET:      return CALL(read_set);
 		case NODE_REGEXP:   return CALL(read_regexp);
+		case NODE_SYMBOL:   return CALL(read_symbol);
 	}
 }
 
