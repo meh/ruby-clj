@@ -81,6 +81,10 @@ describe Clojure do
 		it 'dumps correctly hashes' do
 			Clojure.dump({ :a => 'b' }).should == '{:a "b"}'
 		end
+
+		it 'dumps correctly metadata' do
+			Clojure.dump([1, 2, 3].to_vector.tap { |x| x.metadata = :lol }).should == '^:lol [1 2 3]'
+		end
 	end
 
 	describe '#parse' do
@@ -203,6 +207,13 @@ describe Clojure do
 		
 		it 'parses correctly maps' do
 			Clojure.parse('{:a "b"}').should == { :a => 'b' }
+		end
+
+		it 'parses correctly metadata' do
+			Clojure.parse('^:lol [1 2 3]').tap { |data|
+				data.should == [1, 2, 3]
+				data.metadata.should == { :lol => true }
+			}
 		end
 	end
 end

@@ -18,9 +18,9 @@ module Clojure
 
 		def metadata= (value)
 			metadata.merge! case value
-				when Hash   then value
-				when Symbol then { value => true }
-				when String then { :tag => value }
+				when ::Hash   then value
+				when ::Symbol then { value => true }
+				when ::String then { :tag => value }
 				else raise ArgumentError, 'the passed value is not suitable as metadata'
 			end
 		end
@@ -31,9 +31,9 @@ module Clojure
 			'^' + if @metadata.length == 1
 				piece = @metadata.first
 
-				if piece.first.is_a?(Symbol) && piece.last == true
+				if piece.first.is_a?(::Symbol) && piece.last == true
 					piece.first.to_clj(options)
-				elsif piece.first == :tag && piece.last.is_a?(String)
+				elsif piece.first == :tag && piece.last.is_a?(::String)
 					piece.last.to_clj(options)
 				else
 					@metadata.to_clj(options)

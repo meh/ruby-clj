@@ -113,32 +113,24 @@ static NodeType next_type (STATE)
 static VALUE read_metadata (STATE)
 {
 	VALUE  result;
-	VALUE* metadatas = NULL;
-	size_t length    = 0;
+	VALUE  metadatas = rb_ary_new();
 	size_t i;
 
 	while (CURRENT == '^') {
-		metadatas = realloc(metadatas, ++length * sizeof(VALUE));
-
 		SEEK(1);
 
-		metadatas[length - 1] = CALL(read_next);
+		rb_ary_push(metadatas, CALL(read_next));
 	}
 
 	result = CALL(read_next);
 
 	if (!rb_respond_to(result, rb_intern("metadata="))) {
-		free(metadatas);
-
 		rb_raise(rb_eSyntaxError, "the object cannot hold metadata");
 	}
 
-	// FIXME: this could lead to a memleak if #metadata= raises
-	for (i = 0; i < length; i++) {
-		rb_funcall(result, rb_intern("metadata="), 1, metadatas[i]);
+	for (i = 0; i < RARRAY_LEN(metadatas); i++) {
+		rb_funcall(result, rb_intern("metadata="), 1, RARRAY_PTR(metadatas)[i]);
 	}
-
-	free(metadatas);
 
 	return result;
 }
@@ -536,14 +528,10 @@ static VALUE t_parse (VALUE self)
 		}
 	}
 
-	rb_gc_register_address(&source);
-
 	string = StringValueCStr(source);
 	result = read_next(self, string, &position);
 
 	ignore(self, string, &position);
-
-	rb_gc_unregister_address(&source);
 
 	if (string[position] != '\0') {
 		rb_raise(rb_eSyntaxError, "there is some unconsumed input");
