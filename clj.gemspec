@@ -1,6 +1,6 @@
 Gem::Specification.new {|s|
 	s.name         = 'clj'
-	s.version      = '0.0.7.2'
+	s.version      = '0.0.8'
 	s.author       = 'meh.'
 	s.email        = 'meh@paranoici.org'
 	s.homepage     = 'http://github.com/meh/ruby-clj'
