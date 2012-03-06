@@ -543,11 +543,11 @@ static VALUE t_parse (VALUE self)
 
 	ignore(self, string, &position);
 
+	rb_gc_unregister_address(&source);
+
 	if (string[position] != '\0') {
 		rb_raise(rb_eSyntaxError, "there is some unconsumed input");
 	}
-
-	rb_gc_unregister_address(&source);
 
 	return result;
 }
