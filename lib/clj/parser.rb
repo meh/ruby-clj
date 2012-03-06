@@ -306,6 +306,7 @@ private
 			key = read_next
 			ignore
 			value = read_next
+			ignore
 
 			result[key] = value
 		end

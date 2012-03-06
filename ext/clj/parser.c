@@ -421,6 +421,7 @@ static VALUE read_map (STATE)
 		key = CALL(read_next);
 		CALL(ignore);
 		value = CALL(read_next);
+		CALL(ignore);
 
 		rb_funcall(result, rb_intern("[]="), 2, key, value);
 	}
