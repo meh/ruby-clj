@@ -200,7 +200,7 @@ describe Clojure do
 		end
 
 		it 'parses correctly sets' do
-			Clojure.parse('#{1 2 3}').should == [1, 2, 3]
+			Clojure.parse('#{1 2 3}').should == [1, 2, 3].to_set
 
 			expect { Clojure.parse('#{1 1}') }.should raise_error
 		end

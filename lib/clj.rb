@@ -8,9 +8,6 @@
 #  0. You just DO WHAT THE FUCK YOU WANT TO.
 #++
 
-require 'date'
-require 'bigdecimal'
-
 module Clojure
 	def self.parse (*args)
 		Clojure::Parser.new(*args).parse

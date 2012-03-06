@@ -285,15 +285,14 @@ private
 		ignore
 
 		while lookahead(1) != '}'
-			result << read_next
+			unless result.add? read_next
+				raise SyntaxError, 'the set contains non unique values'
+			end
+
 			ignore
 		end
 
 		@source.read(1)
-
-		if result.uniq!
-			raise SyntaxError, 'the set contains non unique values'
-		end
 
 		result
 	end

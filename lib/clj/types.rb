@@ -9,6 +9,9 @@
 #++
 
 require 'forwardable'
+require 'set'
+require 'date'
+require 'bigdecimal'
 
 module Clojure
 	module Metadata
@@ -68,7 +71,7 @@ module Clojure
 		end
 	end
 
-	class Set < Array
+	class Set < Set
 		include Clojure::Metadata
 
 		def to_clj (options = {})

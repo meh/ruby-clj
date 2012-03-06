@@ -397,16 +397,14 @@ static VALUE read_set (STATE)
 	SEEK(2); CALL(ignore);
 
 	while (CURRENT != '}') {
-		rb_funcall(result, rb_intern("<<"), 1, CALL(read_next));
+		if (NIL_P(rb_funcall(result, rb_intern("add?"), 1, CALL(read_next)))) {
+			rb_raise(rb_eSyntaxError, "the set contains non unique values");
+		}
 
 		CALL(ignore);
 	}
 
 	SEEK(1);
-
-	if (!NIL_P(rb_funcall(result, rb_intern("uniq!"), 0))) {
-		rb_raise(rb_eSyntaxError, "the set contains non unique values");
-	}
 
 	return result;
 }
@@ -499,14 +497,14 @@ static VALUE t_init (int argc, VALUE* argv, VALUE self)
 		rb_iv_set(self, "@list_class", tmp);
 	}
 	else {
-		rb_iv_set(self, "@list_class", rb_const_get(cClojure, rb_intern("Vector")));
+		rb_iv_set(self, "@list_class", rb_const_get(cClojure, rb_intern("List")));
 	}
 
 	if (!NIL_P(tmp = rb_hash_aref(options, rb_intern("set_class")))) {
 		rb_iv_set(self, "@set_class", tmp);
 	}
 	else {
-		rb_iv_set(self, "@set_class", rb_const_get(cClojure, rb_intern("Vector")));
+		rb_iv_set(self, "@set_class", rb_const_get(cClojure, rb_intern("Set")));
 	}
 
 	return self;
