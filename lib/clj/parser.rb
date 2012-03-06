@@ -13,8 +13,7 @@ require 'stringio'
 module Clojure
 
 class Parser
-	NUMBERS  = '0' .. '9'
-	SYMBOL   = ('0' .. '9').to_a | ('a' .. 'z').to_a | ('A' .. 'Z').to_a | %w[+ ! - _ ? . : /]
+	NUMBERS = '0' .. '9'
 
 	UNICODE_REGEX = /[0-9|a-f|A-F]{4}/
 	OCTAL_REGEX   = /[0-3]?[0-7]?[0-7]/
@@ -342,7 +341,7 @@ private
 	end
 
 	def is_symbol? (ch)
-		SYMBOL.include?(ch)
+		(ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'z') || (ch >= 'A' || ch <= 'Z') || ch == '+' || ch == '!' || ch == '-' || ch == '_' || ch == '?' || ch == '.' || ch == ':' || ch == '/'
 	end
 
 	def both_separator? (ch)

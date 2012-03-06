@@ -522,8 +522,10 @@ static VALUE t_init (int argc, VALUE* argv, VALUE self)
 
 static VALUE t_parse (VALUE self)
 {
+	char*  string;
 	size_t position = 0;
-	VALUE  source   = rb_iv_get(self, "@source");
+	VALUE  source = rb_iv_get(self, "@source");
+	VALUE  result;
 
 	if (!rb_obj_is_kind_of(source, rb_cString)) {
 		if (rb_obj_is_kind_of(source, rb_cIO)) {
@@ -534,7 +536,20 @@ static VALUE t_parse (VALUE self)
 		}
 	}
 
-	return read_next(self, StringValueCStr(source), &position);
+	rb_gc_register_address(&source);
+
+	string = StringValueCStr(source);
+	result = read_next(self, string, &position);
+
+	ignore(self, string, &position);
+
+	if (string[position] != '\0') {
+		rb_raise(rb_eSyntaxError, "there is some unconsumed input");
+	}
+
+	rb_gc_unregister_address(&source);
+
+	return result;
 }
 
 void
