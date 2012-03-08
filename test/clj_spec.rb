@@ -75,7 +75,8 @@ describe Clojure do
 			Clojure.dump([[]]).should         == '[[]]'
 			Clojure.dump([[], [], []]).should == '[[] [] []]'
 
-			Clojure.dump([1, 2, 3]).should == '[1 2 3]'
+			Clojure.dump([1, 2, 3]).should         == '[1 2 3]'
+			Clojure.dump([1, 2, 3].to_list).should == '(1 2 3)'
 		end
 
 		it 'dumps correctly hashes' do
@@ -84,6 +85,10 @@ describe Clojure do
 
 		it 'dumps correctly metadata' do
 			Clojure.dump([1, 2, 3].to_vector.tap { |x| x.metadata = :lol }).should == '^:lol [1 2 3]'
+		end
+
+		it 'dumps correctly sets' do
+			Clojure.dump(Set.new([1, 2, 3])).should == '#{1 2 3}'
 		end
 	end
 
@@ -137,22 +142,19 @@ describe Clojure do
 
 		it 'parses correctly symbols' do
 			Clojure.parse('ni').should == :ni.symbol!
-			Clojure.parse('ni').should == :ni.symbol!
 		end
 
 		it 'parses correctly keywords' do
 			Clojure.parse(':wat').should == :wat
 		end
 
-		it 'parses correctly integers' do
+		it 'parses correctly numbers' do
 			Clojure.parse('2').should    == 2
 			Clojure.parse('1337').should == 1337
 
 			Clojure.parse('16rFF').should == 255
 			Clojure.parse('2r11').should  == 3
-		end
 
-		it 'parses correctly floats' do
 			Clojure.parse('2.3').should == 2.3
 			Clojure.parse('2e3').should == 2000
 		end

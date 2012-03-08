@@ -75,7 +75,7 @@ module Clojure
 		include Clojure::Metadata
 
 		def to_clj (options = {})
-			metadata_to_clj(options) + '#{' + uniq.map { |o| o.to_clj(options) }.join(' ') + '}'
+			metadata_to_clj(options) + '#{' + map { |o| o.to_clj(options) }.join(' ') + '}'
 		end
 	end
 
@@ -208,6 +208,12 @@ class Array
 
 	def to_list
 		Clojure::List.new(self)
+	end
+end
+
+class Set
+	def to_clj (options = {})
+		Clojure::Set.new(self).to_clj(options)
 	end
 end
 
